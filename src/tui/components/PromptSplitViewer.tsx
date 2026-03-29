@@ -10,6 +10,7 @@ import { Box, Text, useStdout } from 'ink';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { parsePromptFileContent } from '../../parsers/prompt_parser.js';
+import { MarkdownRenderer } from './MarkdownRenderer.js';
 
 interface PromptSplitViewerProps {
   filePath: string;
@@ -51,11 +52,9 @@ function Pane({ title, color, lines, offset, maxRows, focused, meta }: PaneProps
           {lines.length > 0 && `L${offset + 1}–${Math.min(offset + maxRows, lines.length)}/${lines.length} ${Math.min(pct, 100)}%`}
         </Text>
       </Box>
-      {visible.map((line, i) => (
-        <Box key={offset + i} paddingX={1}>
-          <Text>{line || ' '}</Text>
-        </Box>
-      ))}
+      <Box flexDirection="column" paddingX={1}>
+        <MarkdownRenderer lines={visible} />
+      </Box>
     </Box>
   );
 }
