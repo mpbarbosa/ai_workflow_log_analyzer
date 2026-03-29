@@ -12,6 +12,7 @@ interface StatusBarProps {
   mode?: 'analysis' | 'files';
   fileOpen?: boolean;
   promptSplitMode?: boolean;
+  promptPartsMode?: boolean;
   isPromptFile?: boolean;
   promptZoomed?: boolean;
   // Status
@@ -44,10 +45,12 @@ function K({ children }: { children: React.ReactNode }) {
 export function StatusBar({
   filter, focusedPanel, canExport,
   mode = 'analysis', fileOpen = false,
-  promptSplitMode = false, isPromptFile = false, promptZoomed = false,
+  promptSplitMode = false, promptPartsMode = false,
+  isPromptFile = false, promptZoomed = false,
   analysisState = 'idle', progressPhase, issueCount, criticalCount, runId,
 }: StatusBarProps) {
   const inSplitView = mode === 'files' && promptSplitMode && focusedPanel === 'fileviewer';
+  const inPartsMode = mode === 'files' && promptPartsMode && focusedPanel === 'fileviewer';
   const st = STATE_LABEL[analysisState];
 
   return (
@@ -55,8 +58,8 @@ export function StatusBar({
 
       {/* ── Left: keyboard hints ── */}
       <Text dimColor>
-        {!inSplitView && <><K>Tab</K> Panel{'  '}</>}
-        {!inSplitView && <><K>↑↓</K> Navigate{'  '}</>}
+        {!inSplitView && !inPartsMode && <><K>Tab</K> Panel{'  '}</>}
+        {!inSplitView && <><K>↑↓</K> {inPartsMode ? 'Sections' : 'Navigate'}{'  '}</>}
         {mode === 'files' ? (
           <>
             {focusedPanel === 'fileviewer' ? (
@@ -70,7 +73,12 @@ export function StatusBar({
                 ) : (
                   <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bot{'  '}</>
                 )}
-                {isPromptFile && <><K>p</K> {promptSplitMode ? 'Raw view' : 'Split Prompt/Response'}{'  '}</>}
+                {isPromptFile && (
+                  <>
+                    <K>p</K> {promptSplitMode ? 'Raw view' : 'Split Prompt/Response'}{'  '}
+                    <K>s</K> {promptSplitMode || promptZoomed ? '' : 'Parts view  '}
+                  </>
+                )}
                 <K>Esc</K> Close{'  '}
               </>
             ) : (
@@ -106,7 +114,8 @@ export function StatusBar({
           <>
             <Text dimColor>›</Text>
             <Text color="white">{focusedPanel}</Text>
-            {promptSplitMode && (
+            {promptPartsMode && <Text color="magenta"> [PARTS]</Text>}
+            {!promptPartsMode && promptSplitMode && (
               <Text color={promptZoomed ? 'yellow' : 'gray'}>
                 {promptZoomed ? `[ZOOM: ${focusedPanel === 'fileviewer' ? 'PANE' : focusedPanel.toUpperCase()}]` : '[SPLIT]'}
               </Text>

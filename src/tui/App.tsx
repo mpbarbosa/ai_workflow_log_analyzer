@@ -16,6 +16,7 @@ import { LLMStreamPanel } from './components/LLMStreamPanel.js';
 import { FileTree } from './components/FileTree.js';
 import { FileViewer } from './components/FileViewer.js';
 import { PromptSplitViewer, isPromptFile } from './components/PromptSplitViewer.js';
+import { PromptPartsViewer } from './components/PromptPartsViewer.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
 import { useRunSelector } from './hooks/useRunSelector.js';
 import { useAnalysis } from './hooks/useAnalysis.js';
@@ -56,6 +57,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const [showHelp, setShowHelp] = useState(false);
   const [openedFilePath, setOpenedFilePath] = useState<string | null>(null);
   const [promptSplitMode, setPromptSplitMode] = useState(false);
+  const [promptPartsMode, setPromptPartsMode] = useState(false);
   const [promptFocusedPane, setPromptFocusedPane] = useState<'prompt' | 'response'>('prompt');
   const [promptZoomedPane, setPromptZoomedPane] = useState<'prompt' | 'response' | null>(null);
 
@@ -101,6 +103,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         // Close viewer, return focus to tree
         setOpenedFilePath(null);
         setPromptSplitMode(false);
+        setPromptPartsMode(false);
         setPromptZoomedPane(null);
         setFocusedPanel('filetree');
         return;
@@ -140,7 +143,15 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         // p: toggle prompt split view (only for prompt .md files)
         if (input === 'p' && openedFilePath && isPromptFile(openedFilePath)) {
           setPromptSplitMode((s) => !s);
+          setPromptPartsMode(false);
           setPromptFocusedPane('prompt');
+          setPromptZoomedPane(null);
+          return;
+        }
+        // s: toggle prompt parts view (only for prompt .md files)
+        if (input === 's' && openedFilePath && isPromptFile(openedFilePath)) {
+          setPromptPartsMode((s) => !s);
+          setPromptSplitMode(false);
           setPromptZoomedPane(null);
           return;
         }
@@ -157,10 +168,12 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
           if (promptZoomedPane) setPromptZoomedPane(next);
           return;
         }
-        const scrollTarget = promptSplitMode ? '__promptSplitScroll' : '__fileViewerScroll';
+        const scrollTarget = promptPartsMode
+          ? '__promptPartsScroll'
+          : promptSplitMode ? '__promptSplitScroll' : '__fileViewerScroll';
         const ctrl = (globalThis as Record<string, unknown>)[scrollTarget] as Record<string, () => void> | undefined;
-        if (key.upArrow) ctrl?.up?.();
-        if (key.downArrow) ctrl?.down?.();
+        if (key.upArrow)    promptPartsMode ? ctrl?.prevPart?.() : ctrl?.up?.();
+        if (key.downArrow)  promptPartsMode ? ctrl?.nextPart?.() : ctrl?.down?.();
         if (key.pageUp || (key.ctrl && input === 'u')) ctrl?.pageUp?.();
         if (key.pageDown || (key.ctrl && input === 'd')) ctrl?.pageDown?.();
         if (input === 'g') ctrl?.jumpStart?.();
@@ -229,8 +242,8 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
               openedFilePath ? (
                 /* File open: tree as narrow sidebar + dedicated viewer */
                 <>
-                  {/* Hide tree when zoomed for maximum screen real estate */}
-                  {!(promptSplitMode && promptZoomedPane) && (
+                  {/* Hide tree when zoomed or in parts mode for maximum screen real estate */}
+                  {!(promptPartsMode || (promptSplitMode && promptZoomedPane)) && (
                     <FileTree
                       entries={fileTree.entries}
                       selectedIndex={fileTree.selectedIndex}
@@ -239,7 +252,9 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
                       openedPath={openedFilePath}
                     />
                   )}
-                  {promptSplitMode ? (
+                  {promptPartsMode ? (
+                    <PromptPartsViewer filePath={openedFilePath} />
+                  ) : promptSplitMode ? (
                     <PromptSplitViewer
                       filePath={openedFilePath}
                       focusedPane={promptFocusedPane}
@@ -300,6 +315,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         mode={mode}
         fileOpen={!!openedFilePath}
         promptSplitMode={promptSplitMode}
+        promptPartsMode={promptPartsMode}
         isPromptFile={!!(openedFilePath && isPromptFile(openedFilePath))}
         promptZoomed={!!promptZoomedPane}
         analysisState={state}

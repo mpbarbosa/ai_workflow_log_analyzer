@@ -153,3 +153,63 @@ export async function parseRunPrompts(runDir: string): Promise<PromptRecord[]> {
 
   return records.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 }
+
+// ─── Prompt parts parser ──────────────────────────────────────────────────────
+
+/** A named section extracted from a structured prompt. */
+export interface PromptPart {
+  /** The label text, e.g. "Role", "Task", "Output Format" */
+  label: string;
+  /** Raw content lines belonging to this section (may contain markdown) */
+  lines: string[];
+  /** 1-based line index of the first line in the original prompt text */
+  startLine: number;
+}
+
+/**
+ * Parses a structured prompt string into named parts.
+ *
+ * Detects section boundaries by looking for `**Label**:` at the start of a
+ * line (with optional leading whitespace), which is the convention used by
+ * ai_workflow.js personas.  Everything between two such markers (exclusive)
+ * is treated as the body of the preceding section.
+ *
+ * Lines before the first marker are grouped under an implicit "Preamble"
+ * section (only included when non-empty).
+ */
+export function parsePromptParts(promptText: string): PromptPart[] {
+  const SECTION_RE = /^\s*\*\*([^*\n]+)\*\*\s*:/;
+  const rawLines = promptText.split('\n');
+  const parts: PromptPart[] = [];
+
+  let currentLabel = 'Preamble';
+  let currentLines: string[] = [];
+  let currentStart = 1;
+
+  const flush = (nextStart: number) => {
+    // Trim trailing blank lines from body
+    const trimmed = [...currentLines];
+    while (trimmed.length > 0 && trimmed[trimmed.length - 1].trim() === '') trimmed.pop();
+    if (currentLabel !== 'Preamble' || trimmed.some((l) => l.trim() !== '')) {
+      parts.push({ label: currentLabel, lines: trimmed, startLine: currentStart });
+    }
+    currentStart = nextStart;
+    currentLines = [];
+  };
+
+  rawLines.forEach((line, idx) => {
+    const m = line.match(SECTION_RE);
+    if (m) {
+      flush(idx + 1);
+      currentLabel = m[1].trim();
+      // Include the rest of the line after the colon as first content line
+      const afterColon = line.replace(SECTION_RE, '').trim();
+      if (afterColon) currentLines.push(afterColon);
+    } else {
+      currentLines.push(line);
+    }
+  });
+
+  flush(rawLines.length);
+  return parts;
+}
