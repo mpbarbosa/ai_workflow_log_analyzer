@@ -58,6 +58,46 @@ Panel focus cycles via `Tab`/`Shift+Tab`. The focused panel ID is stored in `foc
 
 **Prompt files** are any `.md` files under a `prompts/` directory. `isPromptFile()` is exported from `src/tui/components/PromptSplitViewer.tsx`.
 
+### Pipeline orchestration (`src/lib/pipeline.ts`)
+
+`runAnalysisPipeline(runDir, metricsDir, opts)` is the single entry point for all analysis:
+
+1. Runs all three parsers **in parallel** with `Promise.all`
+2. Runs the three non-LLM analyzers synchronously (pure functions over `LogEvent[]`)
+3. Optionally runs `analyzeAllPrompts()` — LLM-assisted, skippable via `skipPromptQuality`
+4. Optionally calls `summarizeReport()` for an executive summary — skippable via `skipSummary`
+
+`skipPromptQuality: true` also implies `skipSummary: true` in `useAnalysis`. Pass both when running offline or in CI without Copilot access.
+
+`metricsDir` is always `<projectRoot>/.ai_workflow/metrics/`. If it doesn't exist, `parseMetrics()` returns `{ history: [] }` and the pipeline synthesises a minimal `RunMetrics` from the parsed log events.
+
+### `useAnalysis` hook (`src/tui/hooks/useAnalysis.ts`)
+
+Wraps `runAnalysisPipeline` with React state for the TUI:
+
+```typescript
+const { state, report, error, progress, filter, filteredIssues, run, cycleFilter } = useAnalysis(thresholds);
+```
+
+- `state`: `'idle' | 'running' | 'done' | 'error'`
+- `run(runInfo, projectRoot, skipPromptQuality)` — starts analysis; resets `report` and `error` first
+- `filteredIssues` — derived from `report.issues` filtered by the current `filter` value
+- `cycleFilter()` — rotates `all → failure → performance → bug → prompt_quality`
+- `progress.phase` is shown in the TUI header while analysis is running
+
+### `useRunSelector` hook (`src/tui/hooks/useRunSelector.ts`)
+
+Discovers run directories matching `workflow_YYYYMMDD_HHMMSS` under `<aiWorkflowDir>/logs/`, sorted newest-first by `birthtime`. `selectedRun` is the highlighted `RunInfo`. Analysis is triggered by `App.tsx` when the user presses `Enter` on a run — the hook itself only handles discovery and selection.
+
+### Reporters (`src/reporters/`)
+
+Both reporters consume `AnalysisReport` directly:
+
+- `toJson(report)` → formatted JSON string; `writeJsonReport(report, path)` for file output
+- `toMarkdown(report)` → Markdown string; `writeMarkdownReport(report, path)` for file output
+
+The Markdown reporter renders issues grouped by category (`failure → performance → bug → prompt_quality`) with a `█░` score bar for prompt quality results and evidence collapsed in `<details>`. To add a new issue category, update both `SEVERITY_ICON` and `CATEGORY_LABEL` maps in `markdown_reporter.ts`.
+
 ### Scroll state pattern
 
 Ink doesn't support refs for imperative control. Scrollable components (`FileViewer`, `PromptSplitViewer`) expose their scroll handlers via `globalThis`:
