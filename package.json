@@ -1,0 +1,84 @@
+{
+  "name": "ai-workflow-log-analyzer",
+  "version": "0.1.0",
+  "description": "Interactive TUI tool to analyze ai_workflow.js execution logs — surfaces failures, bugs, prompt quality issues, and performance regressions using the GitHub Copilot SDK",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/types/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "bin": {
+    "analyze-logs": "dist/bin/analyze-logs.js"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "dev": "tsx src/bin/analyze-logs.ts",
+    "start": "node dist/bin/analyze-logs.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "npm test -- --watch",
+    "test:coverage": "npm test -- --coverage",
+    "type:check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rm -rf dist coverage"
+  },
+  "keywords": [
+    "ai-workflow",
+    "log-analyzer",
+    "github-copilot",
+    "tui",
+    "ink",
+    "cli",
+    "workflow-automation",
+    "prompt-quality",
+    "performance-analysis"
+  ],
+  "author": {
+    "name": "mpbarbosa",
+    "url": "https://github.com/mpbarbosa"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/mpbarbosa/ai_workflow_log_analyzer#readme",
+  "bugs": {
+    "url": "https://github.com/mpbarbosa/ai_workflow_log_analyzer/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mpbarbosa/ai_workflow_log_analyzer.git"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@github/copilot-sdk": "^0.1.32",
+    "chalk": "^5.4.1",
+    "commander": "^14.0.3",
+    "ink": "^6.8.0",
+    "js-yaml": "^4.1.1",
+    "react": "^19.2.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/jest": "^30.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.4.0",
+    "@types/react": "^19.1.8",
+    "eslint": "^10.0.3",
+    "globals": "^17.4.0",
+    "ink-testing-library": "^4.0.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.3"
+  }
+}
