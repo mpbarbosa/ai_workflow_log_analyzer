@@ -9,6 +9,8 @@ interface StatusBarProps {
   canExport: boolean;
   mode?: 'analysis' | 'files';
   fileOpen?: boolean;
+  promptSplitMode?: boolean;
+  isPromptFile?: boolean;
 }
 
 const FILTER_LABELS: Record<IssueFilter, string> = {
@@ -23,7 +25,7 @@ function K({ children }: { children: React.ReactNode }) {
   return <Text color="cyan">[{children}]</Text>;
 }
 
-export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', fileOpen = false }: StatusBarProps) {
+export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', fileOpen = false, promptSplitMode = false, isPromptFile = false }: StatusBarProps) {
   return (
     <Box borderStyle="single" paddingX={1} justifyContent="space-between">
       <Text dimColor>
@@ -32,7 +34,14 @@ export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', 
         {mode === 'files' ? (
           <>
             {focusedPanel === 'fileviewer' ? (
-              <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bottom{'  '}<K>Esc</K> Close file{'  '}</>
+              <>
+                {promptSplitMode
+                  ? <><K>Tab</K> Prompt↔Response{'  '}</>
+                  : <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bot{'  '}</>
+                }
+                {isPromptFile && <><K>p</K> {promptSplitMode ? 'Raw view' : 'Split Prompt/Response'}{'  '}</>}
+                <K>Esc</K> Close{'  '}
+              </>
             ) : (
               <><K>Enter</K> Open/Expand{'  '}</>
             )}
@@ -51,6 +60,7 @@ export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', 
       <Text dimColor>
         <Text color={mode === 'files' ? 'blue' : 'cyan'}>{mode.toUpperCase()}</Text>
         {' › '}<Text color="white">{focusedPanel}</Text>
+        {promptSplitMode && <Text color="yellow"> [SPLIT]</Text>}
       </Text>
     </Box>
   );

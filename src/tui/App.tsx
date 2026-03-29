@@ -15,6 +15,7 @@ import { DetailOverlay } from './components/DetailOverlay.js';
 import { LLMStreamPanel } from './components/LLMStreamPanel.js';
 import { FileTree } from './components/FileTree.js';
 import { FileViewer } from './components/FileViewer.js';
+import { PromptSplitViewer, isPromptFile } from './components/PromptSplitViewer.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
 import { useRunSelector } from './hooks/useRunSelector.js';
 import { useAnalysis } from './hooks/useAnalysis.js';
@@ -54,6 +55,8 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const [showStream, setShowStream] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [openedFilePath, setOpenedFilePath] = useState<string | null>(null);
+  const [promptSplitMode, setPromptSplitMode] = useState(false);
+  const [promptFocusedPane, setPromptFocusedPane] = useState<'prompt' | 'response'>('prompt');
 
   const selectedIssue: Issue | null = filteredIssues[issueIndex] ?? null;
 
@@ -96,6 +99,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       if (mode === 'files' && openedFilePath) {
         // Close viewer, return focus to tree
         setOpenedFilePath(null);
+        setPromptSplitMode(false);
         setFocusedPanel('filetree');
         return;
       }
@@ -131,12 +135,25 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       }
 
       if (focusedPanel === 'fileviewer') {
-        if (key.upArrow) scrollViewer('up');
-        if (key.downArrow) scrollViewer('down');
-        if (key.pageUp || (key.ctrl && input === 'u')) scrollViewer('pageUp');
-        if (key.pageDown || (key.ctrl && input === 'd')) scrollViewer('pageDown');
-        if (input === 'g') scrollViewer('jumpStart');
-        if (input === 'G') scrollViewer('jumpEnd');
+        // p: toggle prompt split view (only for prompt .md files)
+        if (input === 'p' && openedFilePath && isPromptFile(openedFilePath)) {
+          setPromptSplitMode((s) => !s);
+          setPromptFocusedPane('prompt');
+          return;
+        }
+        // In prompt split mode, Tab switches between prompt/response panes
+        if (promptSplitMode && key.tab) {
+          setPromptFocusedPane((p) => p === 'prompt' ? 'response' : 'prompt');
+          return;
+        }
+        const scrollTarget = promptSplitMode ? '__promptSplitScroll' : '__fileViewerScroll';
+        const ctrl = (globalThis as Record<string, unknown>)[scrollTarget] as Record<string, () => void> | undefined;
+        if (key.upArrow) ctrl?.up?.();
+        if (key.downArrow) ctrl?.down?.();
+        if (key.pageUp || (key.ctrl && input === 'u')) ctrl?.pageUp?.();
+        if (key.pageDown || (key.ctrl && input === 'd')) ctrl?.pageDown?.();
+        if (input === 'g') ctrl?.jumpStart?.();
+        if (input === 'G') ctrl?.jumpEnd?.();
         return;
       }
       return;
@@ -208,10 +225,17 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
                     loading={fileTree.loading}
                     openedPath={openedFilePath}
                   />
-                  <FileViewer
-                    filePath={openedFilePath}
-                    focused={focusedPanel === 'fileviewer'}
-                  />
+                  {promptSplitMode && openedFilePath ? (
+                    <PromptSplitViewer
+                      filePath={openedFilePath}
+                      focusedPane={promptFocusedPane}
+                    />
+                  ) : (
+                    <FileViewer
+                      filePath={openedFilePath}
+                      focused={focusedPanel === 'fileviewer'}
+                    />
+                  )}
                 </>
               ) : (
                 /* No file open: tree takes full width */
@@ -260,6 +284,8 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         canExport={!!report}
         mode={mode}
         fileOpen={!!openedFilePath}
+        promptSplitMode={promptSplitMode}
+        isPromptFile={!!(openedFilePath && isPromptFile(openedFilePath))}
       />
     </Box>
   );
