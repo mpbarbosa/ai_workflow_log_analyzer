@@ -15,6 +15,7 @@ import { DetailOverlay } from './components/DetailOverlay.js';
 import { LLMStreamPanel } from './components/LLMStreamPanel.js';
 import { FileTree } from './components/FileTree.js';
 import { FileViewer } from './components/FileViewer.js';
+import { HelpOverlay } from './components/HelpOverlay.js';
 import { useRunSelector } from './hooks/useRunSelector.js';
 import { useAnalysis } from './hooks/useAnalysis.js';
 import { useFileTree } from './hooks/useFileTree.js';
@@ -51,6 +52,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const [issueIndex, setIssueIndex] = useState(0);
   const [showDetail, setShowDetail] = useState(false);
   const [showStream, setShowStream] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [openedFilePath, setOpenedFilePath] = useState<string | null>(null);
 
   const selectedIssue: Issue | null = filteredIssues[issueIndex] ?? null;
@@ -73,6 +75,9 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   useInput((input, key) => {
     if (input === 'q' || (key.ctrl && input === 'c')) { exit(); return; }
 
+    // h: toggle help
+    if (input === 'h') { setShowHelp((s) => !s); return; }
+
     // v: toggle files / analysis mode
     if (input === 'v') {
       setMode((m) => {
@@ -84,7 +89,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
     }
 
     if (key.tab) { cycleFocus(!key.shift); return; }
-    if (key.escape) { setShowDetail(false); setShowStream(false); return; }
+    if (key.escape) { setShowDetail(false); setShowStream(false); setShowHelp(false); return; }
 
     // ── FILES MODE ────────────────────────────────────────────────────────────
     if (mode === 'files') {
@@ -166,46 +171,52 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       />
 
       <Box flexGrow={1}>
-        {/* Left: run selector (always visible) */}
-        <RunSelector
-          runs={runs}
-          selectedIndex={runIndex}
-          focused={focusedPanel === 'runs'}
-          loading={runsLoading}
-        />
-
-        {mode === 'files' ? (
-          /* ── Files mode ─────────────────────────────────── */
-          <>
-            <FileTree
-              entries={fileTree.entries}
-              selectedIndex={fileTree.selectedIndex}
-              focused={focusedPanel === 'filetree'}
-              loading={fileTree.loading}
-              openedPath={openedFilePath}
-            />
-            <FileViewer
-              filePath={openedFilePath}
-              focused={focusedPanel === 'fileviewer'}
-            />
-          </>
+        {showHelp ? (
+          <HelpOverlay onClose={() => setShowHelp(false)} />
         ) : (
-          /* ── Analysis mode ───────────────────────────────── */
           <>
-            <IssuesPanel
-              issues={filteredIssues}
-              selectedIndex={issueIndex}
-              focused={focusedPanel === 'issues'}
-              filter={filter}
-              loading={isRunning}
-              loadingPhase={progress.phase}
+            {/* Left: run selector (always visible) */}
+            <RunSelector
+              runs={runs}
+              selectedIndex={runIndex}
+              focused={focusedPanel === 'runs'}
+              loading={runsLoading}
             />
-            {(showDetail && selectedIssue) ? (
-              <DetailOverlay issue={selectedIssue} onClose={() => setShowDetail(false)} />
-            ) : (showStream && selectedIssue) ? (
-              <LLMStreamPanel issue={selectedIssue} focused={focusedPanel === 'detail'} />
+
+            {mode === 'files' ? (
+              /* ── Files mode ─────────────────────────────────── */
+              <>
+                <FileTree
+                  entries={fileTree.entries}
+                  selectedIndex={fileTree.selectedIndex}
+                  focused={focusedPanel === 'filetree'}
+                  loading={fileTree.loading}
+                  openedPath={openedFilePath}
+                />
+                <FileViewer
+                  filePath={openedFilePath}
+                  focused={focusedPanel === 'fileviewer'}
+                />
+              </>
             ) : (
-              <MetricsPanel metrics={report?.metrics ?? null} focused={focusedPanel === 'metrics'} />
+              /* ── Analysis mode ───────────────────────────────── */
+              <>
+                <IssuesPanel
+                  issues={filteredIssues}
+                  selectedIndex={issueIndex}
+                  focused={focusedPanel === 'issues'}
+                  filter={filter}
+                  loading={isRunning}
+                  loadingPhase={progress.phase}
+                />
+                {(showDetail && selectedIssue) ? (
+                  <DetailOverlay issue={selectedIssue} onClose={() => setShowDetail(false)} />
+                ) : (showStream && selectedIssue) ? (
+                  <LLMStreamPanel issue={selectedIssue} focused={focusedPanel === 'detail'} />
+                ) : (
+                  <MetricsPanel metrics={report?.metrics ?? null} focused={focusedPanel === 'metrics'} />
+                )}
+              </>
             )}
           </>
         )}

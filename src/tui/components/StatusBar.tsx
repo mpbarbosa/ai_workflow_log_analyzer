@@ -41,6 +41,7 @@ export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis' }
           </>
         )}
         <K>v</K> {mode === 'files' ? 'Analysis' : 'Files'}{'  '}
+        <K>h</K> Help{'  '}
         <K>q</K> Quit
       </Text>
       <Text dimColor>
