@@ -38,7 +38,7 @@ export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', 
               <>
                 {promptSplitMode ? (
                   <>
-                    {!promptZoomed && <><K>Tab</K> Prompt↔Response{'  '}</>}
+                    <K>Tab</K> {promptZoomed ? 'Switch pane' : 'Prompt↔Response'}{'  '}
                     <K>z</K> {promptZoomed ? 'Zoom out' : 'Zoom pane'}{'  '}
                     <K>PgUp/Dn</K> Scroll{'  '}
                   </>

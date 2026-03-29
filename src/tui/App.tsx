@@ -149,9 +149,12 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
           setPromptZoomedPane((z) => z ? null : promptFocusedPane);
           return;
         }
-        // In prompt split mode, Tab switches between prompt/response panes
+        // In prompt split mode, Tab switches between prompt/response panes.
+        // While zoomed, also move the zoomed pane so the display follows.
         if (promptSplitMode && key.tab) {
-          setPromptFocusedPane((p) => p === 'prompt' ? 'response' : 'prompt');
+          const next: 'prompt' | 'response' = promptFocusedPane === 'prompt' ? 'response' : 'prompt';
+          setPromptFocusedPane(next);
+          if (promptZoomedPane) setPromptZoomedPane(next);
           return;
         }
         const scrollTarget = promptSplitMode ? '__promptSplitScroll' : '__fileViewerScroll';
