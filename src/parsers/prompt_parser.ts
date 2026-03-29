@@ -70,8 +70,17 @@ export function parsePromptFileContent(content: string): ParsedPromptFile | null
   const responseSectionMatch = content.match(/## Response\s*\n([\s\S]*?)(?=\n## |$)/);
 
   const extractCodeBlock = (section: string): string => {
-    const codeBlock = section.match(/```[^\n]*\n([\s\S]*?)```/);
-    return codeBlock ? codeBlock[1].trim() : section.trim();
+    const lines = section.split('\n');
+    const firstFence = lines.findIndex((l) => /^```/.test(l));
+    // Use the last ``` line as the closing fence to avoid stopping at nested blocks
+    let lastFence = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (/^```\s*$/.test(lines[i])) { lastFence = i; break; }
+    }
+    if (firstFence !== -1 && lastFence > firstFence) {
+      return lines.slice(firstFence + 1, lastFence).join('\n').trim();
+    }
+    return section.trim();
   };
 
   const prompt = promptSectionMatch ? extractCodeBlock(promptSectionMatch[1]) : '';
@@ -178,7 +187,8 @@ export interface PromptPart {
  * section (only included when non-empty).
  */
 export function parsePromptParts(promptText: string): PromptPart[] {
-  const SECTION_RE = /^\s*\*\*([^*\n]+)\*\*\s*:/;
+  // Matches **Label**: (colon outside stars) OR **Label:** (colon inside stars)
+  const SECTION_RE = /^\s*(?:\*\*([^*\n]+?)\*\*\s*:|\*\*([^*\n]+?):\*\*)/;
   const rawLines = promptText.split('\n');
   const parts: PromptPart[] = [];
 
@@ -201,7 +211,7 @@ export function parsePromptParts(promptText: string): PromptPart[] {
     const m = line.match(SECTION_RE);
     if (m) {
       flush(idx + 1);
-      currentLabel = m[1].trim();
+      currentLabel = (m[1] ?? m[2]).trim();
       // Include the rest of the line after the colon as first content line
       const afterColon = line.replace(SECTION_RE, '').trim();
       if (afterColon) currentLines.push(afterColon);

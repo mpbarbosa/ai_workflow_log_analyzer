@@ -73,10 +73,12 @@ export function StatusBar({
                 ) : (
                   <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bot{'  '}</>
                 )}
-                {isPromptFile && (
+                {fileOpen && (
                   <>
-                    <K>p</K> {promptSplitMode ? 'Raw view' : 'Split Prompt/Response'}{'  '}
-                    <K>s</K> {promptSplitMode || promptZoomed ? '' : 'Parts view  '}
+                    {isPromptFile && (
+                      <><K>p</K> {promptSplitMode ? 'Raw view' : 'Split Prompt/Response'}{'  '}</>
+                    )}
+                    <K>s</K> {promptPartsMode ? 'Raw view' : 'Parts view'}{'  '}
                   </>
                 )}
                 <K>Esc</K> Close{'  '}

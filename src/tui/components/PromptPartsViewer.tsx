@@ -53,9 +53,14 @@ export function PromptPartsViewer({ filePath }: PromptPartsViewerProps) {
     readFile(filePath, 'utf8')
       .then((text) => {
         const parsed = parsePromptFileContent(text);
-        if (!parsed) { setError('Could not parse prompt file.'); return; }
-        setMeta(`${parsed.persona}  ·  ${parsed.model}`);
-        setParts(parsePromptParts(parsed.prompt));
+        if (parsed) {
+          setMeta(`${parsed.persona}  ·  ${parsed.model}`);
+          setParts(parsePromptParts(parsed.prompt));
+        } else {
+          // Not a prompt log file — parse section markers from raw content
+          setMeta(basename(filePath));
+          setParts(parsePromptParts(text));
+        }
       })
       .catch((e) => setError(String(e)));
   }, [filePath]);

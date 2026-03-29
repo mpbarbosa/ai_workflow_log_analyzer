@@ -148,8 +148,8 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
           setPromptZoomedPane(null);
           return;
         }
-        // s: toggle prompt parts view (only for prompt .md files)
-        if (input === 's' && openedFilePath && isPromptFile(openedFilePath)) {
+        // s: toggle prompt parts view (any open file)
+        if (input === 's' && openedFilePath) {
           setPromptPartsMode((s) => !s);
           setPromptSplitMode(false);
           setPromptZoomedPane(null);
