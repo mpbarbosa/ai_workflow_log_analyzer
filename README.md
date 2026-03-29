@@ -74,6 +74,102 @@ analyze-logs --threshold-config thresholds.yaml /path/to/project
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Files mode (`v` to toggle)
+
+Press `v` to switch from Analysis mode into **Files mode**, which lets you browse and read raw log files like an IDE.  Three progressively focused states are available:
+
+#### State 1 — Tree only (no file open)
+
+```
+┌─ ai_workflow Log Analyzer ──────────────────────────────────── 📂 FILES ─┐
+│ Run: workflow_20260327_012345                                              │
+├───────────────────────────────────────────────────────────────────────────┤
+│ ▶ workflow_20260327_012345/                                                │
+│   ▼ steps/                                                                 │
+│     ▶ step_01.log                                                          │
+│     ▶ step_02.log                                                          │
+│   ▼ prompts/                                                               │
+│     ▶ step_01/                                                             │
+│       ▶ 20260327T0123_1_architect.md                                       │
+│   ▶ workflow.log                                                           │
+├───────────────────────────────────────────────────────────────────────────┤
+│ [Tab] Panel  [↑↓] Navigate  [Enter] Open/Expand  [v] Analysis  [h] Help  │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+Use `↑`/`↓` to navigate and `Enter` to expand directories or open a file.
+
+#### State 2 — Tree + file viewer (file open)
+
+```
+┌─ ai_workflow Log Analyzer ──────────────────────────────────── 📂 FILES ─┐
+│ Run: workflow_20260327_012345                                              │
+├──────────────────┬────────────────────────────────────────────────────────┤
+│ ▶ workflow_20260 │  step_02.log                                           │
+│   ▼ steps/       │                                                        │
+│     ▶ step_01.lo │   1  [2026-03-27T01:24:01Z] ✔ [INFO]  step_02 start   │
+│   > step_02.log  │   2  [2026-03-27T01:24:15Z] ✔ [INFO]  LLM response OK │
+│     ▶ step_03.lo │   3  [2026-03-27T01:24:15Z] ✗ [WARN]  latency 18.4s   │
+│   ▼ prompts/     │   4  [2026-03-27T01:24:16Z] ✔ [INFO]  step_02 end     │
+│                  │                                                        │
+│                  │                                               100% ▐▌  │
+├──────────────────┴────────────────────────────────────────────────────────┤
+│ [PgUp/Dn] Scroll  [g/G] Top/Bot  [p] Split Prompt/Response  [Esc] Close  │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+`Esc` closes the viewer and returns focus to the tree.  
+For prompt `.md` files (any file under `prompts/`), press `p` to enter split view.
+
+#### State 3a — Prompt split view (`p`)
+
+```
+┌─ ai_workflow Log Analyzer ──────────────────────────────────── 📂 FILES ─┐
+│ Run: workflow_20260327_012345                                              │
+├──────────────────┬──────────────────────────┬─────────────────────────────┤
+│ ▶ workflow_20260 │  ▶ PROMPT                │   RESPONSE                  │
+│   ▼ prompts/     │                          │                             │
+│   > architect.md │  **Role**: You are a     │  Based on the analysis, I   │
+│                  │  senior software arch-   │  found 8 undocumented…      │
+│                  │  itect.                  │                             │
+│                  │  **Task**: Perform       │  Recommendations:           │
+│                  │  comprehensive valid-    │  1. Add missing JSDoc…      │
+│                  │  ation of the codebase.  │  2. Fix retry logic…        │
+├──────────────────┴──────────────────────────┴─────────────────────────────┤
+│ [Tab] Prompt↔Response  [z] Zoom pane  [p] Raw view  [Esc] Close  [SPLIT] │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+`Tab` moves focus between the Prompt and Response panes (active pane highlighted).  
+`PgUp`/`PgDn` scrolls whichever pane is focused.
+
+#### State 3b — Zoomed pane (`z`)
+
+```
+┌─ ai_workflow Log Analyzer ──────────────────────────────────── 📂 FILES ─┐
+│ Run: workflow_20260327_012345             ⬛ ZOOM: PROMPT                  │
+├───────────────────────────────────────────────────────────────────────────┤
+│  ▶ PROMPT — ZOOMED                                                        │
+│                                                                           │
+│  **Role**: You are a senior software architect with deep knowledge of     │
+│  JavaScript, TypeScript, and Node.js best practices.                      │
+│                                                                           │
+│  **Task**: Perform comprehensive validation of the target codebase:       │
+│  - Identify undocumented public APIs                                      │
+│  - Flag unreachable code paths                                            │
+│  - Detect retry logic that could cause infinite loops                     │
+│                                                                           │
+│                                                                           │
+├───────────────────────────────────────────────────────────────────────────┤
+│ [z] Zoom out  [PgUp/Dn] Scroll  [p] Raw view  [Esc] Close      [ZOOM]   │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+The tree sidebar is hidden and the focused pane fills the full terminal width.  
+Press `z` again to return to split view, or `p` to return to raw log view.
+
+---
+
 ### Keyboard map
 
 | Key | Action |
@@ -85,6 +181,21 @@ analyze-logs --threshold-config thresholds.yaml /path/to/project
 | `r` | Re-run Copilot LLM analysis on selected item |
 | `e` | Export JSON + Markdown to current directory |
 | `q` / `Ctrl+C` | Quit |
+
+#### Files mode keys
+
+| Key | Context | Action |
+|-----|---------|--------|
+| `v` | Any | Toggle between Analysis and Files mode |
+| `↑` / `↓` | Tree | Navigate files and directories |
+| `Enter` | Tree | Expand/collapse directory or open file |
+| `Esc` | Viewer | Close file, return to tree |
+| `PgUp` / `PgDn` | Viewer | Scroll file content |
+| `g` / `G` | Viewer | Jump to top / bottom |
+| `p` | Viewer (prompt `.md`) | Toggle Prompt/Response split view |
+| `Tab` | Split view | Switch focus: Prompt pane ↔ Response pane |
+| `z` | Split view | Zoom focused pane to full-screen / zoom out |
+| `h` | Any | Open/close help overlay |
 
 ## Input: Log structure
 
