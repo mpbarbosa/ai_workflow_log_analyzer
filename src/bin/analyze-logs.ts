@@ -17,6 +17,7 @@ program
   .version('0.1.0')
   .description('Analyze ai_workflow.js execution logs for failures, bugs, prompt quality, and performance issues')
   .argument('[project-root]', 'Root directory of the ai_workflow.js project to analyze', process.cwd())
+  .option('--project <path>', 'Alias for [project-root] positional argument')
   .option('--tui', 'Launch interactive TUI dashboard (default)')
   .option('--json [output]', 'Output analysis as JSON (optionally specify output file)')
   .option('--md [output]', 'Output analysis as Markdown (optionally specify output file)')
@@ -26,6 +27,7 @@ program
   .option('--threshold-config <path>', 'Path to threshold config JSON/YAML file')
   .action(async (projectRootArg: string, opts: {
     tui?: boolean;
+    project?: string;
     json?: string | boolean;
     md?: string | boolean;
     run?: string;
@@ -33,7 +35,7 @@ program
     skipSummary?: boolean;
     thresholdConfig?: string;
   }) => {
-    const projectRoot = resolve(projectRootArg);
+    const projectRoot = resolve(opts.project ?? projectRootArg);
     const isTui = !opts.json && !opts.md;
 
     if (isTui || opts.tui) {
