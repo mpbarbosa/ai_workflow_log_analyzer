@@ -302,6 +302,11 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         promptSplitMode={promptSplitMode}
         isPromptFile={!!(openedFilePath && isPromptFile(openedFilePath))}
         promptZoomed={!!promptZoomedPane}
+        analysisState={state}
+        progressPhase={progress.phase}
+        issueCount={report?.counts.total}
+        criticalCount={report?.counts.critical}
+        runId={selectedRun?.runId ?? report?.runId}
       />
     </Box>
   );
