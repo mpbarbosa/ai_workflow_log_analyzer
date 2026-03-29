@@ -13,8 +13,11 @@ import { IssuesPanel } from './components/IssuesPanel.js';
 import { MetricsPanel } from './components/MetricsPanel.js';
 import { DetailOverlay } from './components/DetailOverlay.js';
 import { LLMStreamPanel } from './components/LLMStreamPanel.js';
+import { FileTree } from './components/FileTree.js';
+import { FileViewer } from './components/FileViewer.js';
 import { useRunSelector } from './hooks/useRunSelector.js';
 import { useAnalysis } from './hooks/useAnalysis.js';
+import { useFileTree } from './hooks/useFileTree.js';
 import type { PanelId, Issue, ThresholdConfig } from '../types/index.js';
 
 export interface AppProps {
@@ -23,7 +26,10 @@ export interface AppProps {
   skipPromptQuality?: boolean;
 }
 
-const PANELS: PanelId[] = ['runs', 'issues', 'metrics', 'detail'];
+type AppMode = 'analysis' | 'files';
+
+const ANALYSIS_PANELS: PanelId[] = ['runs', 'issues', 'metrics', 'detail'];
+const FILES_PANELS: PanelId[] = ['runs', 'filetree', 'fileviewer'];
 
 export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppProps) {
   const { exit } = useApp();
@@ -38,51 +44,95 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const { state, report, error, progress, filter, filteredIssues, run, cycleFilter } =
     useAnalysis(thresholds);
 
+  const fileTree = useFileTree(selectedRun?.path ?? null);
+
+  const [mode, setMode] = useState<AppMode>('analysis');
   const [focusedPanel, setFocusedPanel] = useState<PanelId>('runs');
   const [issueIndex, setIssueIndex] = useState(0);
   const [showDetail, setShowDetail] = useState(false);
   const [showStream, setShowStream] = useState(false);
+  const [openedFilePath, setOpenedFilePath] = useState<string | null>(null);
 
   const selectedIssue: Issue | null = filteredIssues[issueIndex] ?? null;
 
   const cycleFocus = useCallback((forward: boolean) => {
     setFocusedPanel((prev) => {
-      const idx = PANELS.indexOf(prev);
-      const next = forward ? (idx + 1) % PANELS.length : (idx - 1 + PANELS.length) % PANELS.length;
-      return PANELS[next];
+      const panels = mode === 'files' ? FILES_PANELS : ANALYSIS_PANELS;
+      const idx = panels.indexOf(prev as PanelId);
+      const base = idx === -1 ? 0 : idx;
+      const next = forward ? (base + 1) % panels.length : (base - 1 + panels.length) % panels.length;
+      return panels[next];
     });
-  }, []);
+  }, [mode]);
+
+  const scrollViewer = (action: string) => {
+    const ctrl = (globalThis as Record<string, unknown>).__fileViewerScroll as Record<string, () => void> | undefined;
+    ctrl?.[action]?.();
+  };
 
   useInput((input, key) => {
-    if (input === 'q' || (key.ctrl && input === 'c')) {
-      exit();
+    if (input === 'q' || (key.ctrl && input === 'c')) { exit(); return; }
+
+    // v: toggle files / analysis mode
+    if (input === 'v') {
+      setMode((m) => {
+        const next = m === 'files' ? 'analysis' : 'files';
+        setFocusedPanel(next === 'files' ? 'filetree' : 'issues');
+        return next;
+      });
       return;
     }
 
-    // Tab to cycle panels
-    if (key.tab) {
-      cycleFocus(!key.shift);
+    if (key.tab) { cycleFocus(!key.shift); return; }
+    if (key.escape) { setShowDetail(false); setShowStream(false); return; }
+
+    // ── FILES MODE ────────────────────────────────────────────────────────────
+    if (mode === 'files') {
+      if (focusedPanel === 'runs') {
+        if (key.upArrow) selectRun(runIndex - 1);
+        if (key.downArrow) selectRun(runIndex + 1);
+        if (key.return && selectedRun) {
+          setFocusedPanel('filetree');
+        }
+        return;
+      }
+
+      if (focusedPanel === 'filetree') {
+        if (key.upArrow) fileTree.moveUp();
+        if (key.downArrow) fileTree.moveDown();
+        if (key.return) {
+          const entry = fileTree.selectedEntry;
+          if (entry?.isDir) {
+            fileTree.toggleExpand();
+          } else if (entry?.filePath) {
+            setOpenedFilePath(entry.filePath);
+            setFocusedPanel('fileviewer');
+          }
+        }
+        return;
+      }
+
+      if (focusedPanel === 'fileviewer') {
+        if (key.upArrow) scrollViewer('up');
+        if (key.downArrow) scrollViewer('down');
+        if (key.pageUp || (key.ctrl && input === 'u')) scrollViewer('pageUp');
+        if (key.pageDown || (key.ctrl && input === 'd')) scrollViewer('pageDown');
+        if (input === 'g') scrollViewer('jumpStart');
+        if (input === 'G') scrollViewer('jumpEnd');
+        return;
+      }
       return;
     }
 
-    if (key.escape) {
-      setShowDetail(false);
-      setShowStream(false);
-      return;
-    }
-
-    // Navigation within focused panel
+    // ── ANALYSIS MODE ─────────────────────────────────────────────────────────
     if (key.upArrow) {
       if (focusedPanel === 'runs') selectRun(runIndex - 1);
       else if (focusedPanel === 'issues') setIssueIndex((i) => Math.max(0, i - 1));
     }
-
     if (key.downArrow) {
       if (focusedPanel === 'runs') selectRun(runIndex + 1);
       else if (focusedPanel === 'issues') setIssueIndex((i) => Math.min(filteredIssues.length - 1, i + 1));
     }
-
-    // Enter: load run or open detail
     if (key.return) {
       if (focusedPanel === 'runs' && selectedRun && state !== 'running') {
         setIssueIndex(0);
@@ -96,23 +146,11 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         setFocusedPanel('detail');
       }
     }
-
-    // f: cycle issue filter
-    if (input === 'f' && focusedPanel === 'issues') {
-      cycleFilter();
-      setIssueIndex(0);
-    }
-
-    // r: re-analyze selected issue with LLM streaming
+    if (input === 'f' && focusedPanel === 'issues') { cycleFilter(); setIssueIndex(0); }
     if (input === 'r' && selectedIssue) {
       setShowStream(true);
       setShowDetail(false);
       setFocusedPanel('detail');
-    }
-
-    // e: export report
-    if (input === 'e' && report) {
-      // export handled in CLI layer; signal is enough
     }
   });
 
@@ -124,11 +162,11 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       <Header
         runId={runId}
         status={state === 'running' ? 'running' : state === 'done' ? 'done' : state === 'error' ? 'error' : 'idle'}
+        mode={mode}
       />
 
-      {/* Main panels row */}
       <Box flexGrow={1}>
-        {/* Left: run selector */}
+        {/* Left: run selector (always visible) */}
         <RunSelector
           runs={runs}
           selectedIndex={runIndex}
@@ -136,23 +174,40 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
           loading={runsLoading}
         />
 
-        {/* Center: issues */}
-        <IssuesPanel
-          issues={filteredIssues}
-          selectedIndex={issueIndex}
-          focused={focusedPanel === 'issues'}
-          filter={filter}
-          loading={isRunning}
-          loadingPhase={progress.phase}
-        />
-
-        {/* Right: metrics or detail/stream */}
-        {(showDetail && selectedIssue) ? (
-          <DetailOverlay issue={selectedIssue} onClose={() => setShowDetail(false)} />
-        ) : (showStream && selectedIssue) ? (
-          <LLMStreamPanel issue={selectedIssue} focused={focusedPanel === 'detail'} />
+        {mode === 'files' ? (
+          /* ── Files mode ─────────────────────────────────── */
+          <>
+            <FileTree
+              entries={fileTree.entries}
+              selectedIndex={fileTree.selectedIndex}
+              focused={focusedPanel === 'filetree'}
+              loading={fileTree.loading}
+              openedPath={openedFilePath}
+            />
+            <FileViewer
+              filePath={openedFilePath}
+              focused={focusedPanel === 'fileviewer'}
+            />
+          </>
         ) : (
-          <MetricsPanel metrics={report?.metrics ?? null} focused={focusedPanel === 'metrics'} />
+          /* ── Analysis mode ───────────────────────────────── */
+          <>
+            <IssuesPanel
+              issues={filteredIssues}
+              selectedIndex={issueIndex}
+              focused={focusedPanel === 'issues'}
+              filter={filter}
+              loading={isRunning}
+              loadingPhase={progress.phase}
+            />
+            {(showDetail && selectedIssue) ? (
+              <DetailOverlay issue={selectedIssue} onClose={() => setShowDetail(false)} />
+            ) : (showStream && selectedIssue) ? (
+              <LLMStreamPanel issue={selectedIssue} focused={focusedPanel === 'detail'} />
+            ) : (
+              <MetricsPanel metrics={report?.metrics ?? null} focused={focusedPanel === 'metrics'} />
+            )}
+          </>
         )}
       </Box>
 
@@ -166,6 +221,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         filter={filter}
         focusedPanel={focusedPanel}
         canExport={!!report}
+        mode={mode}
       />
     </Box>
   );

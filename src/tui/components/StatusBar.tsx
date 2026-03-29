@@ -7,6 +7,7 @@ interface StatusBarProps {
   filter: IssueFilter;
   focusedPanel: string;
   canExport: boolean;
+  mode?: 'analysis' | 'files';
 }
 
 const FILTER_LABELS: Record<IssueFilter, string> = {
@@ -17,18 +18,35 @@ const FILTER_LABELS: Record<IssueFilter, string> = {
   prompt_quality: 'Prompt Quality',
 };
 
-export function StatusBar({ filter, focusedPanel, canExport }: StatusBarProps) {
+function K({ children }: { children: React.ReactNode }) {
+  return <Text color="cyan">[{children}]</Text>;
+}
+
+export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis' }: StatusBarProps) {
   return (
     <Box borderStyle="single" paddingX={1} justifyContent="space-between">
       <Text dimColor>
-        <Text color="cyan">[Tab]</Text> Panel {'  '}
-        <Text color="cyan">[↑↓]</Text> Navigate {'  '}
-        <Text color="cyan">[Enter]</Text> Detail {'  '}
-        <Text color="cyan">[f]</Text> Filter: <Text color="yellow">{FILTER_LABELS[filter]}</Text>
-        {canExport && <> {'  '}<Text color="cyan">[e]</Text> Export</>}
-        {'  '}<Text color="cyan">[q]</Text> Quit
+        <K>Tab</K> Panel{'  '}
+        <K>↑↓</K> Navigate{'  '}
+        {mode === 'files' ? (
+          <>
+            <K>Enter</K> Open/Expand{'  '}
+            {focusedPanel === 'fileviewer' && <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bottom{'  '}</>}
+          </>
+        ) : (
+          <>
+            <K>Enter</K> Open{'  '}
+            <K>f</K> Filter: <Text color="yellow">{FILTER_LABELS[filter]}</Text>{'  '}
+            {canExport && <><K>e</K> Export{'  '}</>}
+          </>
+        )}
+        <K>v</K> {mode === 'files' ? 'Analysis' : 'Files'}{'  '}
+        <K>q</K> Quit
       </Text>
-      <Text dimColor>Focus: <Text color="white">{focusedPanel}</Text></Text>
+      <Text dimColor>
+        <Text color={mode === 'files' ? 'blue' : 'cyan'}>{mode.toUpperCase()}</Text>
+        {' › '}<Text color="white">{focusedPanel}</Text>
+      </Text>
     </Box>
   );
 }

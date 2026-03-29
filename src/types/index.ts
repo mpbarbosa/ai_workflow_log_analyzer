@@ -174,7 +174,7 @@ export const DEFAULT_THRESHOLDS: ThresholdConfig = {
 
 // ─── TUI / App state ─────────────────────────────────────────────────────────
 
-export type PanelId = 'runs' | 'issues' | 'metrics' | 'detail';
+export type PanelId = 'runs' | 'issues' | 'metrics' | 'detail' | 'filetree' | 'fileviewer';
 export type IssueFilter = 'all' | IssueCategory;
 
 export interface RunInfo {
