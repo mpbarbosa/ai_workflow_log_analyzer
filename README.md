@@ -33,7 +33,11 @@ npx ai-workflow-log-analyzer --tui /path/to/project
 ### Interactive TUI (default)
 
 ```bash
+# positional path
 analyze-logs --tui /path/to/ai-workflow-project
+
+# or using the --project flag
+analyze-logs --tui --project /path/to/ai-workflow-project
 ```
 
 ### Headless / CI
@@ -119,7 +123,8 @@ Use `↑`/`↓` to navigate and `Enter` to expand directories or open a file.
 ```
 
 `Esc` closes the viewer and returns focus to the tree.  
-For prompt `.md` files (any file under `prompts/`), press `p` to enter split view.
+For prompt `.md` files (any file under `prompts/`), press `p` to enter split view.  
+For any open file, press `s` to switch to **Parts view** (structured section list).
 
 #### State 3a — Prompt split view (`p`)
 
@@ -168,6 +173,57 @@ For prompt `.md` files (any file under `prompts/`), press `p` to enter split vie
 The tree sidebar is hidden and the focused pane fills the full terminal width.  
 Press `z` again to return to split view, or `p` to return to raw log view.
 
+#### State 3c — Prompt Parts view (`s`)
+
+Press `s` on any open file to switch into **Parts view**, which parses the file into named sections (bold-heading delimiters) and displays them as a navigable list:
+
+```
+┌─ ai_workflow Log Analyzer ────────────────────────────── 📂 FILES › [PARTS] ─┐
+│ Run: workflow_20260327_012345                                                   │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ ┌─ Sections ────────────────┐  ┌─ Content ─────────────────────────────────┐ │
+│ │   Role                    │  │  **Role**:                                 │ │
+│ │ ▶ Task                    │  │  You are a senior software architect with  │ │
+│ │   Context                 │  │  deep knowledge of JavaScript, TypeScript, │ │
+│ │   Constraints             │  │  and Node.js best practices.               │ │
+│ │   Output format           │  │                                            │ │
+│ └───────────────────────────┘  └────────────────────────────────────────────┘ │
+├───────────────────────────────────────────────────────────────────────────────┤
+│ [↑↓] Sections  [a] Analyze part  [s] Raw view  [Esc] Close          [PARTS]  │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
+
+Use `↑`/`↓` to navigate sections. Press `a` to stream a Copilot analysis of the selected section against your project's codebase.
+
+#### State 3d — Part analysis overlay (`a`)
+
+With a part selected in Parts view, press `a` to open the **analysis overlay**:
+
+```
+┌─ ai_workflow Log Analyzer ──────────────────────────── 📂 FILES › [ANALYZING] ─┐
+│ Run: workflow_20260327_012345                                                     │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│  ▶ Analyzing: Task                                                                │
+│  ─────────────────────────────────────────────────────────────────────────────── │
+│  The **Task** section defines a broad code review directive without              │
+│  explicit success criteria. Observations:                                        │
+│                                                                                   │
+│  1. **Scope too wide** — "comprehensive validation" with no scoped file list     │
+│     increases token usage without improving result quality.                      │
+│  2. **Missing output schema** — the LLM cannot infer whether to return JSON,    │
+│     markdown, or prose; add an explicit format instruction.                      │
+│  …                                                                                │
+│  ──────────────────────────────────────────────────────────────────────────────  │
+│  ✓ Saved: .ai_workflow/analysis/workflow_20260327_012345/part_task_2026-03-27… │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│ [PgUp/Dn] Scroll  [Esc] Cancel / Close                               [ANALYZING] │
+└──────────────────────────────────────────────────────────────────────────────────┘
+```
+
+The analysis streams token-by-token from the Copilot SDK.  
+When complete, the result is saved to `<projectRoot>/.ai_workflow/analysis/<runId>/part_<label>_<timestamp>.md`.  
+Press `Esc` to cancel in-flight streaming or to close a completed overlay.
+
 ---
 
 ### Keyboard map
@@ -189,12 +245,16 @@ Press `z` again to return to split view, or `p` to return to raw log view.
 | `v` | Any | Toggle between Analysis and Files mode |
 | `↑` / `↓` | Tree | Navigate files and directories |
 | `Enter` | Tree | Expand/collapse directory or open file |
-| `Esc` | Viewer | Close file, return to tree |
+| `Esc` | Viewer / overlay | Close file or cancel analysis, return to tree |
 | `PgUp` / `PgDn` | Viewer | Scroll file content |
 | `g` / `G` | Viewer | Jump to top / bottom |
 | `p` | Viewer (prompt `.md`) | Toggle Prompt/Response split view |
 | `Tab` | Split view | Switch focus: Prompt pane ↔ Response pane |
 | `z` | Split view | Zoom focused pane to full-screen / zoom out |
+| `s` | Viewer (any file) | Toggle Prompt Parts structured section view |
+| `↑` / `↓` | Parts view | Navigate sections |
+| `a` | Parts view | Stream Copilot analysis of selected section vs codebase |
+| `PgUp` / `PgDn` | Analysis overlay | Scroll analysis text |
 | `h` | Any | Open/close help overlay |
 
 ## Input: Log structure
@@ -298,7 +358,10 @@ src/
 └── tui/
     ├── App.tsx                 ← root Ink component; keyboard nav, panel focus
     ├── components/             ← Header, RunSelector, IssuesPanel, MetricsPanel,
-    │                               DetailOverlay, LLMStreamPanel, StatusBar
+    │   │                           DetailOverlay, LLMStreamPanel, StatusBar,
+    │   │                           FileTree, FileViewer, PromptSplitViewer,
+    │   │                           PromptPartsViewer, PartAnalysisOverlay,
+    │   │                           HelpOverlay, MarkdownRenderer
     └── hooks/                  ← useAnalysis, useRunSelector
 ```
 
