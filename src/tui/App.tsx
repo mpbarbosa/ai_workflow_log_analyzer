@@ -59,13 +59,15 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
 
   const cycleFocus = useCallback((forward: boolean) => {
     setFocusedPanel((prev) => {
-      const panels = mode === 'files' ? FILES_PANELS : ANALYSIS_PANELS;
+      const panels = mode === 'files'
+        ? (openedFilePath ? FILES_PANELS : ['runs', 'filetree'] as PanelId[])
+        : ANALYSIS_PANELS;
       const idx = panels.indexOf(prev as PanelId);
       const base = idx === -1 ? 0 : idx;
       const next = forward ? (base + 1) % panels.length : (base - 1 + panels.length) % panels.length;
       return panels[next];
     });
-  }, [mode]);
+  }, [mode, openedFilePath]);
 
   const scrollViewer = (action: string) => {
     const ctrl = (globalThis as Record<string, unknown>).__fileViewerScroll as Record<string, () => void> | undefined;
@@ -89,7 +91,18 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
     }
 
     if (key.tab) { cycleFocus(!key.shift); return; }
-    if (key.escape) { setShowDetail(false); setShowStream(false); setShowHelp(false); return; }
+    if (key.escape) {
+      if (showHelp) { setShowHelp(false); return; }
+      if (mode === 'files' && openedFilePath) {
+        // Close viewer, return focus to tree
+        setOpenedFilePath(null);
+        setFocusedPanel('filetree');
+        return;
+      }
+      setShowDetail(false);
+      setShowStream(false);
+      return;
+    }
 
     // ── FILES MODE ────────────────────────────────────────────────────────────
     if (mode === 'files') {
@@ -110,9 +123,9 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
           if (entry?.isDir) {
             fileTree.toggleExpand();
           } else if (entry?.filePath) {
-            setOpenedFilePath(entry.filePath);
-            setFocusedPanel('fileviewer');
-          }
+                setOpenedFilePath(entry.filePath);
+                setFocusedPanel('fileviewer');
+              }
         }
         return;
       }
@@ -185,19 +198,32 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
 
             {mode === 'files' ? (
               /* ── Files mode ─────────────────────────────────── */
-              <>
+              openedFilePath ? (
+                /* File open: tree as narrow sidebar + dedicated viewer */
+                <>
+                  <FileTree
+                    entries={fileTree.entries}
+                    selectedIndex={fileTree.selectedIndex}
+                    focused={focusedPanel === 'filetree'}
+                    loading={fileTree.loading}
+                    openedPath={openedFilePath}
+                  />
+                  <FileViewer
+                    filePath={openedFilePath}
+                    focused={focusedPanel === 'fileviewer'}
+                  />
+                </>
+              ) : (
+                /* No file open: tree takes full width */
                 <FileTree
                   entries={fileTree.entries}
                   selectedIndex={fileTree.selectedIndex}
                   focused={focusedPanel === 'filetree'}
                   loading={fileTree.loading}
-                  openedPath={openedFilePath}
+                  openedPath={null}
+                  fullWidth
                 />
-                <FileViewer
-                  filePath={openedFilePath}
-                  focused={focusedPanel === 'fileviewer'}
-                />
-              </>
+              )
             ) : (
               /* ── Analysis mode ───────────────────────────────── */
               <>
@@ -233,6 +259,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         focusedPanel={focusedPanel}
         canExport={!!report}
         mode={mode}
+        fileOpen={!!openedFilePath}
       />
     </Box>
   );

@@ -14,11 +14,13 @@ interface FileTreeProps {
   focused: boolean;
   loading: boolean;
   openedPath: string | null;
+  /** When true the tree expands to fill all available width (no file open). */
+  fullWidth?: boolean;
 }
 
 const INDENT = '  ';
 
-export function FileTree({ entries, selectedIndex, focused, loading, openedPath }: FileTreeProps) {
+export function FileTree({ entries, selectedIndex, focused, loading, openedPath, fullWidth = false }: FileTreeProps) {
   const borderColor = focused ? 'cyan' : 'gray';
   const title = focused ? '▶ FILES' : '  FILES';
 
@@ -27,7 +29,8 @@ export function FileTree({ entries, selectedIndex, focused, loading, openedPath 
       flexDirection="column"
       borderStyle="single"
       borderColor={borderColor}
-      width={28}
+      width={fullWidth ? undefined : 30}
+      flexGrow={fullWidth ? 1 : 0}
       flexShrink={0}
       overflow="hidden"
     >

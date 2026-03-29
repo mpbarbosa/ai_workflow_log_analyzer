@@ -8,6 +8,7 @@ interface StatusBarProps {
   focusedPanel: string;
   canExport: boolean;
   mode?: 'analysis' | 'files';
+  fileOpen?: boolean;
 }
 
 const FILTER_LABELS: Record<IssueFilter, string> = {
@@ -22,7 +23,7 @@ function K({ children }: { children: React.ReactNode }) {
   return <Text color="cyan">[{children}]</Text>;
 }
 
-export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis' }: StatusBarProps) {
+export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', fileOpen = false }: StatusBarProps) {
   return (
     <Box borderStyle="single" paddingX={1} justifyContent="space-between">
       <Text dimColor>
@@ -30,8 +31,11 @@ export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis' }
         <K>↑↓</K> Navigate{'  '}
         {mode === 'files' ? (
           <>
-            <K>Enter</K> Open/Expand{'  '}
-            {focusedPanel === 'fileviewer' && <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bottom{'  '}</>}
+            {focusedPanel === 'fileviewer' ? (
+              <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bottom{'  '}<K>Esc</K> Close file{'  '}</>
+            ) : (
+              <><K>Enter</K> Open/Expand{'  '}</>
+            )}
           </>
         ) : (
           <>
