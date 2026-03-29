@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
+import { MarkdownRenderer } from './MarkdownRenderer.js';
 
 interface FileViewerProps {
   filePath: string | null;
@@ -82,6 +83,7 @@ export function FileViewer({ filePath, focused }: FileViewerProps) {
   const visibleLines = lines.slice(scrollOffset, scrollOffset + termRows);
   const totalLines = lines.length;
   const scrollPct = totalLines > 0 ? Math.round(((scrollOffset + termRows) / totalLines) * 100) : 100;
+  const isMarkdown = filePath?.endsWith('.md') ?? false;
 
   return (
     <Box
@@ -117,15 +119,23 @@ export function FileViewer({ filePath, focused }: FileViewerProps) {
         </Box>
       )}
 
-      {!loading && !error && visibleLines.map((line, i) => {
-        const lineNum = scrollOffset + i + 1;
-        return (
-          <Box key={lineNum} paddingX={1}>
-            <Text dimColor>{String(lineNum).padStart(4, ' ')} </Text>
-            {colourLine(line)}
+      {!loading && !error && (
+        isMarkdown ? (
+          <Box flexDirection="column" paddingX={1}>
+            <MarkdownRenderer lines={visibleLines} />
           </Box>
-        );
-      })}
+        ) : (
+          visibleLines.map((line, i) => {
+            const lineNum = scrollOffset + i + 1;
+            return (
+              <Box key={lineNum} paddingX={1}>
+                <Text dimColor>{String(lineNum).padStart(4, ' ')} </Text>
+                {colourLine(line)}
+              </Box>
+            );
+          })
+        )
+      )}
     </Box>
   );
 }
