@@ -1,0 +1,77 @@
+# AI Workflow Automation Configuration
+
+project:
+  name: "ai_workflow_log_analyzer"
+  type: "typescript-tool"
+  kind: "log_analysis_tui"  # domain: interactive TUI for ai_workflow.js log analysis
+  version: "0.1.0"          # keep in sync with package.json
+  description: "Interactive TUI tool to analyze ai_workflow.js execution logs — surfaces failures, bugs, prompt quality issues, and performance regressions using the GitHub Copilot SDK"
+
+tech_stack:
+  primary_language: "typescript"
+  build_system: "tsc"           # tsc compiles src/**/*.ts → dist/
+  runtime: "tsx"                # tsx used for dev/start (no build step required)
+  ui_framework: "ink"           # React for terminal UIs
+  test_framework: "jest"
+  test_runner: "ts-jest"
+  test_command: "npm test"
+  lint_command: "npm run lint"
+  lint_commands:
+    typescript: "npm run lint"  # ESLint with TypeScript plugin
+
+structure:
+  source_dirs:
+    - src
+  test_dirs:
+    - test
+  docs_dirs: []
+
+workflow:
+  stages:
+    quick:
+      enabled: true
+      steps:
+        - step_00  # pre-analysis / environment scan
+        - step_01  # documentation analysis
+        - step_02  # consistency analysis
+    medium:
+      enabled: true
+      steps:
+        - step_00  # pre-analysis / environment scan
+        - step_01  # documentation analysis
+        - step_02  # consistency analysis
+        - step_03  # script reference analysis
+        - step_04  # config validation
+        - step_05  # directory structure validation
+    full:
+      enabled: true
+      steps:
+        - step_00  # pre-analysis / environment scan
+        - step_01  # documentation analysis
+        - step_02  # consistency analysis
+        - step_03  # script reference analysis
+        - step_04  # config validation
+        - step_05  # directory structure validation
+        - step_06  # integration tests (type-check)
+        - step_07  # coverage report generation
+        - step_08  # release readiness check
+        - step_0f  # artifact commit: versions and commits all workflow outputs
+
+validation:
+  documentation:
+    required: true
+    min_coverage: 70
+  testing:
+    required: true
+    min_coverage: 70  # jest --coverage threshold
+
+linting:
+  md_linter: "none"     # no markdown linter configured
+  md_glob: "**/*.md"
+  md_excludes:
+    - "node_modules/**"
+    - ".ai_workflow/**"
+    - "dist/**"
+
+git:
+  tag_on_run: false     # tagging handled manually; disable during workflow runs

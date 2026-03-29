@@ -181,3 +181,104 @@ export async function summarizeReport(reportJson: string): Promise<string> {
   });
   return result.content;
 }
+
+// ─── Prompt part vs codebase analysis ────────────────────────────────────────
+
+const SYSTEM_ANALYZE_PART = `You are a senior code reviewer and prompt engineer analyzing whether a specific section of an AI workflow prompt is well-aligned with the actual project codebase.
+
+You will be given:
+1. SECTION LABEL — the name of the prompt section being analyzed
+2. SECTION CONTENT — the raw text of that section
+3. CODEBASE CONTEXT — relevant source files from the project
+
+Your task:
+- Assess whether the section's claims, instructions, and context accurately reflect the real codebase
+- Identify any gaps, outdated references, incorrect assumptions, or missing context
+- Rate the alignment on a scale of 1–10 (10 = perfectly aligned)
+- Provide specific, actionable suggestions for improving this prompt section
+
+Output format (markdown):
+## Alignment Score: N/10
+
+## Summary
+One-paragraph assessment of how well this section aligns with the codebase.
+
+## Findings
+- Finding 1 (with file/line reference if applicable)
+- Finding 2
+
+## Suggestions
+1. Specific improvement to the prompt section
+2. ...`;
+
+/**
+ * Reads TypeScript source files from the project for codebase context.
+ * Returns a concatenated string capped at maxChars.
+ */
+async function readCodebaseContext(projectRoot: string, maxChars = 3000): Promise<string> {
+  const { readdir, readFile, stat } = await import('node:fs/promises');
+  const { join } = await import('node:path');
+
+  const collect = async (dir: string, files: string[]): Promise<void> => {
+    let entries: string[];
+    try { entries = await readdir(dir); } catch { return; }
+    for (const e of entries) {
+      if (e === 'node_modules' || e === 'dist' || e === '.git') continue;
+      const full = join(dir, e);
+      const s = await stat(full).catch(() => null);
+      if (!s) continue;
+      if (s.isDirectory()) await collect(full, files);
+      else if (e.endsWith('.ts') && !e.endsWith('.d.ts')) files.push(full);
+    }
+  };
+
+  const files: string[] = [];
+  await collect(join(projectRoot, 'src'), files);
+
+  let context = '';
+  for (const f of files) {
+    if (context.length >= maxChars) break;
+    const rel = f.replace(projectRoot + '/', '');
+    let text: string;
+    try { text = await readFile(f, 'utf8'); } catch { continue; }
+    const snippet = text.slice(0, Math.max(0, maxChars - context.length - rel.length - 10));
+    context += `\n// --- ${rel} ---\n${snippet}`;
+  }
+
+  return context.trim();
+}
+
+/**
+ * Streams an analysis of the given prompt part against the project codebase.
+ * Implements the analyze-prompt-part skill defined in
+ * .github/skills/analyze-prompt-part/SKILL.md.
+ *
+ * @param label      - Section label (e.g. "Role", "Task")
+ * @param lines      - Raw content lines of the section
+ * @param projectRoot - Root of the project being analyzed
+ * @param signal     - Optional AbortSignal to cancel mid-stream
+ */
+export async function* analyzePromptPartVsCodebase(
+  label: string,
+  lines: string[],
+  projectRoot: string,
+  signal?: AbortSignal
+): AsyncGenerator<StreamChunk> {
+  const codebaseContext = await readCodebaseContext(projectRoot);
+  const sectionContent = lines.join('\n').trim();
+
+  const userPrompt = `**SECTION LABEL**: ${label}
+
+**SECTION CONTENT**:
+${sectionContent.slice(0, 2000)}
+
+**CODEBASE CONTEXT** (src/**/*.ts, truncated):
+\`\`\`typescript
+${codebaseContext}
+\`\`\``;
+
+  yield* streamLLM(
+    { prompt: userPrompt, systemMessage: SYSTEM_ANALYZE_PART, model: 'gpt-4.1' },
+    signal
+  );
+}

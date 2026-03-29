@@ -17,11 +17,13 @@ import { FileTree } from './components/FileTree.js';
 import { FileViewer } from './components/FileViewer.js';
 import { PromptSplitViewer, isPromptFile } from './components/PromptSplitViewer.js';
 import { PromptPartsViewer } from './components/PromptPartsViewer.js';
+import { PartAnalysisOverlay } from './components/PartAnalysisOverlay.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
 import { useRunSelector } from './hooks/useRunSelector.js';
 import { useAnalysis } from './hooks/useAnalysis.js';
 import { useFileTree } from './hooks/useFileTree.js';
 import type { PanelId, Issue, ThresholdConfig } from '../types/index.js';
+import type { PromptPart } from '../parsers/prompt_parser.js';
 
 export interface AppProps {
   projectRoot: string;
@@ -60,6 +62,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const [promptPartsMode, setPromptPartsMode] = useState(false);
   const [promptFocusedPane, setPromptFocusedPane] = useState<'prompt' | 'response'>('prompt');
   const [promptZoomedPane, setPromptZoomedPane] = useState<'prompt' | 'response' | null>(null);
+  const [partAnalysisPart, setPartAnalysisPart] = useState<PromptPart | null>(null);
 
   const selectedIssue: Issue | null = filteredIssues[issueIndex] ?? null;
 
@@ -99,6 +102,13 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
     if (key.tab) { cycleFocus(!key.shift); return; }
     if (key.escape) {
       if (showHelp) { setShowHelp(false); return; }
+      // Close part analysis overlay first
+      if (partAnalysisPart) {
+        const ctrl = (globalThis as Record<string, unknown>).__partAnalysisScroll as Record<string, () => void> | undefined;
+        ctrl?.cancel?.();
+        setPartAnalysisPart(null);
+        return;
+      }
       if (mode === 'files' && openedFilePath) {
         // Close viewer, return focus to tree
         setOpenedFilePath(null);
@@ -140,6 +150,13 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       }
 
       if (focusedPanel === 'fileviewer') {
+        // a: analyze selected prompt part vs codebase (parts mode only)
+        if (input === 'a' && promptPartsMode && !partAnalysisPart) {
+          const partsCtrl = (globalThis as Record<string, unknown>).__promptPartsScroll as Record<string, () => unknown> | undefined;
+          const part = partsCtrl?.getSelectedPart?.() as import('../parsers/prompt_parser.js').PromptPart | null;
+          if (part) setPartAnalysisPart(part);
+          return;
+        }
         // p: toggle prompt split view (only for prompt .md files)
         if (input === 'p' && openedFilePath && isPromptFile(openedFilePath)) {
           setPromptSplitMode((s) => !s);
@@ -151,6 +168,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         // s: toggle prompt parts view (any open file)
         if (input === 's' && openedFilePath) {
           setPromptPartsMode((s) => !s);
+          setPartAnalysisPart(null);
           setPromptSplitMode(false);
           setPromptZoomedPane(null);
           return;
@@ -168,12 +186,15 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
           if (promptZoomedPane) setPromptZoomedPane(next);
           return;
         }
-        const scrollTarget = promptPartsMode
-          ? '__promptPartsScroll'
-          : promptSplitMode ? '__promptSplitScroll' : '__fileViewerScroll';
+        // Route scroll to analysis overlay when open, otherwise to file/parts viewer
+        const scrollTarget = partAnalysisPart
+          ? '__partAnalysisScroll'
+          : promptPartsMode ? '__promptPartsScroll'
+          : promptSplitMode ? '__promptSplitScroll'
+          : '__fileViewerScroll';
         const ctrl = (globalThis as Record<string, unknown>)[scrollTarget] as Record<string, () => void> | undefined;
-        if (key.upArrow)    promptPartsMode ? ctrl?.prevPart?.() : ctrl?.up?.();
-        if (key.downArrow)  promptPartsMode ? ctrl?.nextPart?.() : ctrl?.down?.();
+        if (key.upArrow)    (promptPartsMode && !partAnalysisPart) ? ctrl?.prevPart?.() : ctrl?.up?.();
+        if (key.downArrow)  (promptPartsMode && !partAnalysisPart) ? ctrl?.nextPart?.() : ctrl?.down?.();
         if (key.pageUp || (key.ctrl && input === 'u')) ctrl?.pageUp?.();
         if (key.pageDown || (key.ctrl && input === 'd')) ctrl?.pageDown?.();
         if (input === 'g') ctrl?.jumpStart?.();
@@ -242,8 +263,8 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
               openedFilePath ? (
                 /* File open: tree as narrow sidebar + dedicated viewer */
                 <>
-                  {/* Hide tree when zoomed or in parts mode for maximum screen real estate */}
-                  {!(promptPartsMode || (promptSplitMode && promptZoomedPane)) && (
+                  {/* Hide tree when zoomed, in parts mode, or in part analysis for maximum screen real estate */}
+                  {!(promptPartsMode || partAnalysisPart || (promptSplitMode && promptZoomedPane)) && (
                     <FileTree
                       entries={fileTree.entries}
                       selectedIndex={fileTree.selectedIndex}
@@ -252,7 +273,13 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
                       openedPath={openedFilePath}
                     />
                   )}
-                  {promptPartsMode ? (
+                  {partAnalysisPart ? (
+                    <PartAnalysisOverlay
+                      part={partAnalysisPart}
+                      projectRoot={projectRoot}
+                      runId={selectedRun?.runId ?? `analysis_${new Date().toISOString().replace(/[:.]/g, '-')}`}
+                    />
+                  ) : promptPartsMode ? (
                     <PromptPartsViewer filePath={openedFilePath} />
                   ) : promptSplitMode ? (
                     <PromptSplitViewer
@@ -316,6 +343,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         fileOpen={!!openedFilePath}
         promptSplitMode={promptSplitMode}
         promptPartsMode={promptPartsMode}
+        partAnalysisOpen={!!partAnalysisPart}
         isPromptFile={!!(openedFilePath && isPromptFile(openedFilePath))}
         promptZoomed={!!promptZoomedPane}
         analysisState={state}

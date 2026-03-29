@@ -7,7 +7,7 @@
  * @module tui/components/PromptPartsViewer
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
@@ -43,6 +43,14 @@ export function PromptPartsViewer({ filePath }: PromptPartsViewerProps) {
   const [contentOffset, setContentOffset] = useState(0);
   const [meta, setMeta] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Always-current refs so getSelectedPart() can read synchronously
+  const partsRef = useRef<PromptPart[]>([]);
+  const selectedIndexRef = useRef(0);
+
+  // Keep refs in sync
+  useEffect(() => { partsRef.current = parts; }, [parts]);
+  useEffect(() => { selectedIndexRef.current = selectedIndex; }, [selectedIndex]);
 
   useEffect(() => {
     setParts([]);
@@ -89,6 +97,8 @@ export function PromptPartsViewer({ filePath }: PromptPartsViewerProps) {
         });
         setContentOffset(0);
       },
+      // Returns the currently selected PromptPart so App.tsx can pass it to PartAnalysisOverlay
+      getSelectedPart: () => partsRef.current[selectedIndexRef.current] ?? null,
     };
   }, [termRows]);
 

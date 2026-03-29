@@ -72,10 +72,11 @@ const SECTIONS: Section[] = [
       { key: 'g',             desc: 'Jump to top of file' },
       { key: 'G',             desc: 'Jump to bottom of file' },
       { key: 'p',             desc: 'Toggle Prompt/Response split view (prompt .md files only)' },
-      { key: 's',             desc: 'Toggle Prompt Parts view — sections list + content (prompt .md files only)' },
+      { key: 's',             desc: 'Toggle Prompt Parts view — sections list + content (any open file)' },
+      { key: 'a',             desc: 'Analyze selected part vs codebase — streams Copilot analysis, saved to .ai_workflow/analysis/ (Parts view only)' },
       { key: 'z',             desc: 'Zoom focused pane full-screen / zoom out (in split view)' },
       { key: 'Tab',           desc: 'Switch focus: Prompt pane ↔ Response pane (works in split and zoom)' },
-      { key: 'Esc',           desc: 'Close file viewer, return to tree' },
+      { key: 'Esc',           desc: 'Close file viewer / cancel analysis, return to tree' },
     ],
   },
 ];

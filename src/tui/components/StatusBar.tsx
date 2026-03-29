@@ -13,6 +13,7 @@ interface StatusBarProps {
   fileOpen?: boolean;
   promptSplitMode?: boolean;
   promptPartsMode?: boolean;
+  partAnalysisOpen?: boolean;
   isPromptFile?: boolean;
   promptZoomed?: boolean;
   // Status
@@ -45,12 +46,13 @@ function K({ children }: { children: React.ReactNode }) {
 export function StatusBar({
   filter, focusedPanel, canExport,
   mode = 'analysis', fileOpen = false,
-  promptSplitMode = false, promptPartsMode = false,
+  promptSplitMode = false, promptPartsMode = false, partAnalysisOpen = false,
   isPromptFile = false, promptZoomed = false,
   analysisState = 'idle', progressPhase, issueCount, criticalCount, runId,
 }: StatusBarProps) {
   const inSplitView = mode === 'files' && promptSplitMode && focusedPanel === 'fileviewer';
   const inPartsMode = mode === 'files' && promptPartsMode && focusedPanel === 'fileviewer';
+  const inAnalysisOverlay = mode === 'files' && partAnalysisOpen && focusedPanel === 'fileviewer';
   const st = STATE_LABEL[analysisState];
 
   return (
@@ -58,8 +60,8 @@ export function StatusBar({
 
       {/* ── Left: keyboard hints ── */}
       <Text dimColor>
-        {!inSplitView && !inPartsMode && <><K>Tab</K> Panel{'  '}</>}
-        {!inSplitView && <><K>↑↓</K> {inPartsMode ? 'Sections' : 'Navigate'}{'  '}</>}
+        {!inSplitView && !inPartsMode && !inAnalysisOverlay && <><K>Tab</K> Panel{'  '}</>}
+        {!inSplitView && !inAnalysisOverlay && <><K>↑↓</K> {inPartsMode ? 'Sections' : 'Navigate'}{'  '}</>}
         {mode === 'files' ? (
           <>
             {focusedPanel === 'fileviewer' ? (
@@ -75,10 +77,15 @@ export function StatusBar({
                 )}
                 {fileOpen && (
                   <>
-                    {isPromptFile && (
+                    {isPromptFile && !partAnalysisOpen && (
                       <><K>p</K> {promptSplitMode ? 'Raw view' : 'Split Prompt/Response'}{'  '}</>
                     )}
-                    <K>s</K> {promptPartsMode ? 'Raw view' : 'Parts view'}{'  '}
+                    {!partAnalysisOpen && (
+                      <><K>s</K> {promptPartsMode ? 'Raw view' : 'Parts view'}{'  '}</>
+                    )}
+                    {promptPartsMode && (
+                      <><K>a</K> {partAnalysisOpen ? 'Close analysis' : 'Analyze part'}{'  '}</>
+                    )}
                   </>
                 )}
                 <K>Esc</K> Close{'  '}
@@ -116,8 +123,9 @@ export function StatusBar({
           <>
             <Text dimColor>›</Text>
             <Text color="white">{focusedPanel}</Text>
-            {promptPartsMode && <Text color="magenta"> [PARTS]</Text>}
-            {!promptPartsMode && promptSplitMode && (
+            {partAnalysisOpen && <Text color="green"> [ANALYZING]</Text>}
+            {!partAnalysisOpen && promptPartsMode && <Text color="magenta"> [PARTS]</Text>}
+            {!partAnalysisOpen && !promptPartsMode && promptSplitMode && (
               <Text color={promptZoomed ? 'yellow' : 'gray'}>
                 {promptZoomed ? `[ZOOM: ${focusedPanel === 'fileviewer' ? 'PANE' : focusedPanel.toUpperCase()}]` : '[SPLIT]'}
               </Text>
