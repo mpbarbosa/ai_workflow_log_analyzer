@@ -27,11 +27,12 @@ function K({ children }: { children: React.ReactNode }) {
 }
 
 export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', fileOpen = false, promptSplitMode = false, isPromptFile = false, promptZoomed = false }: StatusBarProps) {
+  const inSplitView = mode === 'files' && promptSplitMode && focusedPanel === 'fileviewer';
   return (
     <Box borderStyle="single" paddingX={1} justifyContent="space-between">
       <Text dimColor>
-        <K>Tab</K> Panel{'  '}
-        <K>↑↓</K> Navigate{'  '}
+        {!inSplitView && <><K>Tab</K> Panel{'  '}</>}
+        {!inSplitView && <><K>↑↓</K> Navigate{'  '}</>}
         {mode === 'files' ? (
           <>
             {focusedPanel === 'fileviewer' ? (
