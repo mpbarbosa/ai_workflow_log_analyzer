@@ -9,7 +9,7 @@ interface HeaderProps {
   mode?: 'analysis' | 'files';
 }
 
-export function Header({ runId, status = 'idle', version = '0.1.0', mode = 'analysis' }: HeaderProps) {
+export function Header({ runId, status = 'idle', version = '0.2.0', mode = 'analysis' }: HeaderProps) {
   const statusColor = status === 'running' ? 'yellow' : status === 'done' ? 'green' : status === 'error' ? 'red' : 'gray';
   const statusIcon = status === 'running' ? '⟳' : status === 'done' ? '✓' : status === 'error' ? '✗' : '●';
   const modeLabel = mode === 'files' ? '📂 FILES' : '🔍 ANALYSIS';

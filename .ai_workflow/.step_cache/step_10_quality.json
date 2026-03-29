@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "fileScores": {
+    "src/lib/copilot_client.ts": {
+      "score": 100,
+      "issueCount": 0,
+      "lastAnalyzed": "2026-03-29T23:52:33.586Z"
+    },
+    "src/lib/pipeline.ts": {
+      "score": 100,
+      "issueCount": 0,
+      "lastAnalyzed": "2026-03-29T23:52:33.586Z"
+    }
+  }
+}

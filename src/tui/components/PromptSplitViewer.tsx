@@ -205,3 +205,8 @@ export function PromptSplitViewer({ filePath, focusedPane, zoomedPane }: PromptS
 export function isPromptFile(filePath: string): boolean {
   return filePath.includes('/prompts/') && filePath.endsWith('.md');
 }
+
+/** Returns true if the given file path is an analysis result file under .ai_workflow/analysis/. */
+export function isAnalysisFile(filePath: string): boolean {
+  return filePath.includes('/.ai_workflow/analysis/') && filePath.endsWith('.md');
+}

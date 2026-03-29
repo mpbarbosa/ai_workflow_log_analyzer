@@ -9,6 +9,10 @@ interface LLMStreamPanelProps {
   focused: boolean;
 }
 
+const SYSTEM_ISSUE_ANALYSIS = `You are a senior software engineer providing actionable remediation advice for workflow automation issues.
+
+**Scope**: You have been given ONLY the issue fields listed below: title, category, severity, detail, and optional evidence (capped at 500 chars). Do NOT fabricate additional log output, stack traces, file paths, or code snippets not present in the provided fields. Base all recommendations strictly on the evidence supplied. When evidence is insufficient to give a specific recommendation, say so explicitly rather than speculating.`;
+
 export function LLMStreamPanel({ issue, focused }: LLMStreamPanelProps) {
   const [content, setContent] = useState('');
   const [done, setDone] = useState(false);
@@ -32,7 +36,7 @@ ${issue.evidence ? `**Evidence**: ${issue.evidence.slice(0, 500)}` : ''}`;
 
     (async () => {
       try {
-        for await (const chunk of streamLLM({ prompt, model: 'gpt-4.1' }, ctrl.signal)) {
+        for await (const chunk of streamLLM({ prompt, systemMessage: SYSTEM_ISSUE_ANALYSIS, model: 'gpt-4.1' }, ctrl.signal)) {
           if (ctrl.signal.aborted) break;
           setContent((prev) => prev + chunk.delta);
           if (chunk.done) setDone(true);

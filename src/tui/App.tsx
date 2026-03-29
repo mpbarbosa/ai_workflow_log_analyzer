@@ -4,8 +4,10 @@
  * @module tui/App
  */
 
-import React, { useState, useCallback } from 'react';
-import { Box, Text, useApp, useInput, useStdout } from 'ink';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Box, Text, useApp, useInput, useStdin, useStdout } from 'ink';
+import { spawnSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { Header } from './components/Header.js';
 import { StatusBar } from './components/StatusBar.js';
 import { RunSelector } from './components/RunSelector.js';
@@ -15,7 +17,7 @@ import { DetailOverlay } from './components/DetailOverlay.js';
 import { LLMStreamPanel } from './components/LLMStreamPanel.js';
 import { FileTree } from './components/FileTree.js';
 import { FileViewer } from './components/FileViewer.js';
-import { PromptSplitViewer, isPromptFile } from './components/PromptSplitViewer.js';
+import { PromptSplitViewer, isPromptFile, isAnalysisFile } from './components/PromptSplitViewer.js';
 import { PromptPartsViewer } from './components/PromptPartsViewer.js';
 import { PartAnalysisOverlay } from './components/PartAnalysisOverlay.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
@@ -39,6 +41,7 @@ const FILES_PANELS: PanelId[] = ['runs', 'filetree', 'fileviewer'];
 export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
+  const { setRawMode } = useStdin();
   const cols = stdout?.columns ?? 120;
 
   const aiWorkflowDir = `${projectRoot}/.ai_workflow`;
@@ -49,7 +52,8 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const { state, report, error, progress, filter, filteredIssues, run, cycleFilter } =
     useAnalysis(thresholds);
 
-  const fileTree = useFileTree(selectedRun?.path ?? null);
+  const analysisDir = selectedRun ? `${aiWorkflowDir}/analysis/${selectedRun.runId}` : null;
+  const fileTree = useFileTree(selectedRun?.path ?? null, analysisDir);
 
   const [mode, setMode] = useState<AppMode>('analysis');
   const [focusedPanel, setFocusedPanel] = useState<PanelId>('runs');
@@ -63,6 +67,8 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const [promptFocusedPane, setPromptFocusedPane] = useState<'prompt' | 'response'>('prompt');
   const [promptZoomedPane, setPromptZoomedPane] = useState<'prompt' | 'response' | null>(null);
   const [partAnalysisPart, setPartAnalysisPart] = useState<PromptPart | null>(null);
+  const [planCliPending, setPlanCliPending] = useState<string | null>(null);
+  const [auditSkillPending, setAuditSkillPending] = useState(false);
 
   const selectedIssue: Issue | null = filteredIssues[issueIndex] ?? null;
 
@@ -82,6 +88,55 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
     const ctrl = (globalThis as Record<string, unknown>).__fileViewerScroll as Record<string, () => void> | undefined;
     ctrl?.[action]?.();
   };
+
+  // Spawn an interactive copilot plan session from an analysis file.
+  useEffect(() => {
+    if (!planCliPending) return;
+    const filePath = planCliPending;
+    let cancelled = false;
+
+    (async () => {
+      const content = await readFile(filePath, 'utf8').catch(() => '');
+      if (cancelled) return;
+
+      const prompt =
+        `[[PLAN]] Fix the issues reported in this analysis:\n\n${content}`;
+
+      // Suspend Ink: exit alternate screen and disable raw mode
+      setRawMode(false);
+      process.stdout.write('\x1b[?1049l');
+
+      spawnSync('copilot', ['-i', prompt], {
+        stdio: 'inherit',
+        env: { ...process.env },
+      });
+
+      // Restore Ink: re-enter alternate screen and re-enable raw mode
+      process.stdout.write('\x1b[?1049h');
+      setRawMode(true);
+      setPlanCliPending(null);
+    })();
+
+    return () => { cancelled = true; };
+  }, [planCliPending, setRawMode]);
+
+  // Spawn the audit-and-fix skill in an interactive copilot session.
+  useEffect(() => {
+    if (!auditSkillPending) return;
+
+    setRawMode(false);
+    process.stdout.write('\x1b[?1049l');
+
+    spawnSync('copilot', ['-i', 'Run the audit-and-fix skill'], {
+      stdio: 'inherit',
+      cwd: projectRoot,
+      env: { ...process.env },
+    });
+
+    process.stdout.write('\x1b[?1049h');
+    setRawMode(true);
+    setAuditSkillPending(false);
+  }, [auditSkillPending, setRawMode]);
 
   useInput((input, key) => {
     if (input === 'q' || (key.ctrl && input === 'c')) { exit(); return; }
@@ -155,6 +210,11 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
           const partsCtrl = (globalThis as Record<string, unknown>).__promptPartsScroll as Record<string, () => unknown> | undefined;
           const part = partsCtrl?.getSelectedPart?.() as import('../parsers/prompt_parser.js').PromptPart | null;
           if (part) setPartAnalysisPart(part);
+          return;
+        }
+        // x: send analysis file to copilot CLI with [[PLAN]] prompt (parts mode + analysis file only)
+        if (input === 'x' && promptPartsMode && openedFilePath && isAnalysisFile(openedFilePath) && !partAnalysisPart) {
+          setPlanCliPending(openedFilePath);
           return;
         }
         // p: toggle prompt split view (only for prompt .md files)
@@ -232,6 +292,8 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       setShowDetail(false);
       setFocusedPanel('detail');
     }
+    // a: run audit-and-fix skill
+    if (input === 'a') { setAuditSkillPending(true); }
   });
 
   const runId = selectedRun?.runId ?? report?.runId;
@@ -345,6 +407,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         promptPartsMode={promptPartsMode}
         partAnalysisOpen={!!partAnalysisPart}
         isPromptFile={!!(openedFilePath && isPromptFile(openedFilePath))}
+        isAnalysisFile={!!(openedFilePath && isAnalysisFile(openedFilePath))}
         promptZoomed={!!promptZoomedPane}
         analysisState={state}
         progressPhase={progress.phase}

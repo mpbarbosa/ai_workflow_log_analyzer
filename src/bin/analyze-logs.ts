@@ -14,7 +14,7 @@ const program = new Command();
 
 program
   .name('analyze-logs')
-  .version('0.1.0')
+  .version('0.2.0')
   .description('Analyze ai_workflow.js execution logs for failures, bugs, prompt quality, and performance issues')
   .argument('[project-root]', 'Root directory of the ai_workflow.js project to analyze', process.cwd())
   .option('--project <path>', 'Alias for [project-root] positional argument')

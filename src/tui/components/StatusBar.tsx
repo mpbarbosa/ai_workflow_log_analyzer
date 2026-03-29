@@ -15,6 +15,7 @@ interface StatusBarProps {
   promptPartsMode?: boolean;
   partAnalysisOpen?: boolean;
   isPromptFile?: boolean;
+  isAnalysisFile?: boolean;
   promptZoomed?: boolean;
   // Status
   analysisState?: AnalysisState;
@@ -47,7 +48,7 @@ export function StatusBar({
   filter, focusedPanel, canExport,
   mode = 'analysis', fileOpen = false,
   promptSplitMode = false, promptPartsMode = false, partAnalysisOpen = false,
-  isPromptFile = false, promptZoomed = false,
+  isPromptFile = false, isAnalysisFile = false, promptZoomed = false,
   analysisState = 'idle', progressPhase, issueCount, criticalCount, runId,
 }: StatusBarProps) {
   const inSplitView = mode === 'files' && promptSplitMode && focusedPanel === 'fileviewer';
@@ -86,6 +87,9 @@ export function StatusBar({
                     {promptPartsMode && (
                       <><K>a</K> {partAnalysisOpen ? 'Close analysis' : 'Analyze part'}{'  '}</>
                     )}
+                    {promptPartsMode && isAnalysisFile && !partAnalysisOpen && (
+                      <><K>x</K> Fix with Copilot{'  '}</>
+                    )}
                   </>
                 )}
                 <K>Esc</K> Close{'  '}
@@ -99,6 +103,7 @@ export function StatusBar({
             <K>Enter</K> Open{'  '}
             <K>f</K> Filter: <Text color="yellow">{FILTER_LABELS[filter]}</Text>{'  '}
             {canExport && <><K>e</K> Export{'  '}</>}
+            <K>a</K> Audit &amp; Fix{'  '}
           </>
         )}
         <K>v</K> {mode === 'files' ? 'Analysis' : 'Files'}{'  '}

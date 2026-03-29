@@ -56,7 +56,7 @@ async function scanDir(dir: string, depth: number): Promise<FileEntry[]> {
   return entries;
 }
 
-async function buildTree(runDir: string): Promise<FileEntry[]> {
+async function buildTree(runDir: string, analysisDir: string | null): Promise<FileEntry[]> {
   const result: FileEntry[] = [];
   const topNames = (await readdir(runDir).catch(() => [])).sort();
 
@@ -69,10 +69,25 @@ async function buildTree(runDir: string): Promise<FileEntry[]> {
       result.push({ label: name, filePath: full, depth: 0, isDir: false, key: full });
     }
   }
+
+  if (analysisDir) {
+    const analysisNames = await readdir(analysisDir).catch(() => null);
+    if (analysisNames !== null) {
+      result.push({
+        label: 'analysis/',
+        filePath: null,
+        depth: 0,
+        isDir: true,
+        isExpanded: false,
+        key: analysisDir,
+      });
+    }
+  }
+
   return result;
 }
 
-export function useFileTree(runDir: string | null) {
+export function useFileTree(runDir: string | null, analysisDir: string | null = null) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -81,8 +96,8 @@ export function useFileTree(runDir: string | null) {
     if (!runDir) { setEntries([]); return; }
     setLoading(true);
     setSelectedIndex(0);
-    buildTree(runDir).then((e) => { setEntries(e); setLoading(false); });
-  }, [runDir]);
+    buildTree(runDir, analysisDir).then((e) => { setEntries(e); setLoading(false); });
+  }, [runDir, analysisDir]);
 
   const selectedEntry = entries[selectedIndex] ?? null;
 

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "partitionIndex": 1,
+  "totalPartitions": 9,
+  "filesHash": "2e44a392",
+  "partitionLabels": [
+    "src/lib",
+    "src/tui",
+    "src/tui (2)",
+    "src/tui (3)",
+    "src/tui (4)",
+    "src/analyzers, src/bin",
+    "src, src/parsers",
+    "src/reporters, src/types, package-lock.json, package.json",
+    "tsconfig.json, eslint.config.mjs, jest.config.mjs"
+  ],
+  "updatedAt": "2026-03-29T23:52:33.587Z"
+}

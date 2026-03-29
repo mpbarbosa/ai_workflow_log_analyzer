@@ -124,6 +124,11 @@ const SYSTEM_PROMPT_QUALITY = `You are an expert AI prompt quality analyst.
 Evaluate the given prompt and its response from an AI workflow automation system.
 Score the prompt quality from 0-100 and provide structured feedback.
 
+**Scope**: You have been given ONLY the prompt text (capped at 3 000 chars) and the first
+1 500 chars of the response. Do NOT infer what the full response contains beyond what is
+shown. If truncation makes a quality dimension unassessable, reflect that uncertainty in
+your feedback rather than speculating about omitted content.
+
 Respond in this exact JSON format:
 {
   "score": <number 0-100>,
@@ -171,7 +176,12 @@ ${response.slice(0, 1500)}`;
 
 const SYSTEM_SUMMARIZE = `You are a technical analysis assistant.
 Summarize the analysis report for an AI workflow run concisely (3-5 sentences).
-Focus on the most critical issues and actionable recommendations.`;
+Focus on the most critical issues and actionable recommendations.
+
+**Scope**: You have been given ONLY the JSON analysis data provided. Do NOT invent
+findings, issue counts, or recommendations not present in the data. If the data reports
+no critical issues, do not fabricate urgency. When in doubt, silence is preferable to
+speculation.`;
 
 export async function summarizeReport(reportJson: string): Promise<string> {
   const result = await analyzeWithLLM({
@@ -188,8 +198,15 @@ const SYSTEM_ANALYZE_PART = `You are a senior code reviewer and prompt engineer 
 
 You will be given:
 1. SECTION LABEL — the name of the prompt section being analyzed
-2. SECTION CONTENT — the raw text of that section
-3. CODEBASE CONTEXT — relevant source files from the project
+2. SECTION CONTENT — the raw text of that section (capped at 2 000 chars)
+3. CODEBASE CONTEXT — a truncated snapshot of TypeScript source files from the project
+
+**Scope**: You have been given ONLY the section text and the truncated codebase snapshot
+above. Do NOT assert facts about the codebase that are not explicitly visible in the
+provided CODEBASE CONTEXT. The snapshot is truncated — absence of a symbol or file does
+not mean it does not exist in the real codebase. When the evidence is insufficient to
+verify a claim, note it explicitly rather than speculating. When in doubt, silence is
+preferable to speculation.
 
 Your task:
 - Assess whether the section's claims, instructions, and context accurately reflect the real codebase
