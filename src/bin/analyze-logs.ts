@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 /**
  * CLI entry point for ai_workflow_log_analyzer.
  * Modes: --tui (default), --json, --md
