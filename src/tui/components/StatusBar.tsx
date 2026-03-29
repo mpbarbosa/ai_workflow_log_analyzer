@@ -11,6 +11,7 @@ interface StatusBarProps {
   fileOpen?: boolean;
   promptSplitMode?: boolean;
   isPromptFile?: boolean;
+  promptZoomed?: boolean;
 }
 
 const FILTER_LABELS: Record<IssueFilter, string> = {
@@ -25,7 +26,7 @@ function K({ children }: { children: React.ReactNode }) {
   return <Text color="cyan">[{children}]</Text>;
 }
 
-export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', fileOpen = false, promptSplitMode = false, isPromptFile = false }: StatusBarProps) {
+export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', fileOpen = false, promptSplitMode = false, isPromptFile = false, promptZoomed = false }: StatusBarProps) {
   return (
     <Box borderStyle="single" paddingX={1} justifyContent="space-between">
       <Text dimColor>
@@ -35,10 +36,15 @@ export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', 
           <>
             {focusedPanel === 'fileviewer' ? (
               <>
-                {promptSplitMode
-                  ? <><K>Tab</K> Prompt↔Response{'  '}</>
-                  : <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bot{'  '}</>
-                }
+                {promptSplitMode ? (
+                  <>
+                    {!promptZoomed && <><K>Tab</K> Prompt↔Response{'  '}</>}
+                    <K>z</K> {promptZoomed ? 'Zoom out' : 'Zoom pane'}{'  '}
+                    <K>PgUp/Dn</K> Scroll{'  '}
+                  </>
+                ) : (
+                  <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bot{'  '}</>
+                )}
                 {isPromptFile && <><K>p</K> {promptSplitMode ? 'Raw view' : 'Split Prompt/Response'}{'  '}</>}
                 <K>Esc</K> Close{'  '}
               </>
@@ -60,7 +66,7 @@ export function StatusBar({ filter, focusedPanel, canExport, mode = 'analysis', 
       <Text dimColor>
         <Text color={mode === 'files' ? 'blue' : 'cyan'}>{mode.toUpperCase()}</Text>
         {' › '}<Text color="white">{focusedPanel}</Text>
-        {promptSplitMode && <Text color="yellow"> [SPLIT]</Text>}
+        {promptSplitMode && <Text color={promptZoomed ? 'yellow' : 'gray'}> {promptZoomed ? '[ZOOM]' : '[SPLIT]'}</Text>}
       </Text>
     </Box>
   );

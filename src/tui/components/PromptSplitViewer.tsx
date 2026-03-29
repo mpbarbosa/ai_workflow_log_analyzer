@@ -14,6 +14,8 @@ import { parsePromptFileContent } from '../../parsers/prompt_parser.js';
 interface PromptSplitViewerProps {
   filePath: string;
   focusedPane: 'prompt' | 'response';
+  /** When set, only this pane is rendered full-screen (no sidebar, no split). */
+  zoomedPane: 'prompt' | 'response' | null;
 }
 
 // ─── Scrollable pane ──────────────────────────────────────────────────────────
@@ -68,7 +70,7 @@ interface ParsedView {
   responseLines: string[];
 }
 
-export function PromptSplitViewer({ filePath, focusedPane }: PromptSplitViewerProps) {
+export function PromptSplitViewer({ filePath, focusedPane, zoomedPane }: PromptSplitViewerProps) {
   const { stdout } = useStdout();
   const maxRows = Math.max(5, (stdout?.rows ?? 40) - 8);
 
@@ -146,29 +148,55 @@ export function PromptSplitViewer({ filePath, focusedPane }: PromptSplitViewerPr
   return (
     <Box flexGrow={1} flexDirection="column">
       {/* File title bar */}
-      <Box paddingX={1} paddingY={0}>
+      <Box paddingX={1}>
         <Text color="cyan" bold>📄 {filename}</Text>
         <Text dimColor>  {meta}</Text>
+        {zoomedPane && <Text color="yellow" bold>  ⬛ ZOOM: {zoomedPane.toUpperCase()}</Text>}
       </Box>
 
-      {/* Two panes side-by-side */}
+      {/* Pane area: zoomed (full-screen) or split (side-by-side) */}
       <Box flexGrow={1}>
-        <Pane
-          title="PROMPT"
-          color="yellow"
-          lines={parsed.promptLines}
-          offset={promptOffset}
-          maxRows={maxRows}
-          focused={focusedPane === 'prompt'}
-        />
-        <Pane
-          title="RESPONSE"
-          color="green"
-          lines={parsed.responseLines}
-          offset={responseOffset}
-          maxRows={maxRows}
-          focused={focusedPane === 'response'}
-        />
+        {zoomedPane === 'prompt' ? (
+          <Pane
+            title="PROMPT — ZOOMED"
+            color="yellow"
+            lines={parsed.promptLines}
+            offset={promptOffset}
+            maxRows={maxRows}
+            focused
+            meta={`${parsed.promptLines.length} lines`}
+          />
+        ) : zoomedPane === 'response' ? (
+          <Pane
+            title="RESPONSE — ZOOMED"
+            color="green"
+            lines={parsed.responseLines}
+            offset={responseOffset}
+            maxRows={maxRows}
+            focused
+            meta={`${parsed.responseLines.length} lines`}
+          />
+        ) : (
+          /* Normal split view */
+          <>
+            <Pane
+              title="PROMPT"
+              color="yellow"
+              lines={parsed.promptLines}
+              offset={promptOffset}
+              maxRows={maxRows}
+              focused={focusedPane === 'prompt'}
+            />
+            <Pane
+              title="RESPONSE"
+              color="green"
+              lines={parsed.responseLines}
+              offset={responseOffset}
+              maxRows={maxRows}
+              focused={focusedPane === 'response'}
+            />
+          </>
+        )}
       </Box>
     </Box>
   );

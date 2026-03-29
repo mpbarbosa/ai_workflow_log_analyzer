@@ -57,6 +57,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const [openedFilePath, setOpenedFilePath] = useState<string | null>(null);
   const [promptSplitMode, setPromptSplitMode] = useState(false);
   const [promptFocusedPane, setPromptFocusedPane] = useState<'prompt' | 'response'>('prompt');
+  const [promptZoomedPane, setPromptZoomedPane] = useState<'prompt' | 'response' | null>(null);
 
   const selectedIssue: Issue | null = filteredIssues[issueIndex] ?? null;
 
@@ -100,6 +101,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         // Close viewer, return focus to tree
         setOpenedFilePath(null);
         setPromptSplitMode(false);
+        setPromptZoomedPane(null);
         setFocusedPanel('filetree');
         return;
       }
@@ -139,6 +141,12 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         if (input === 'p' && openedFilePath && isPromptFile(openedFilePath)) {
           setPromptSplitMode((s) => !s);
           setPromptFocusedPane('prompt');
+          setPromptZoomedPane(null);
+          return;
+        }
+        // z: zoom focused pane to full-screen (only in split mode)
+        if (input === 'z' && promptSplitMode) {
+          setPromptZoomedPane((z) => z ? null : promptFocusedPane);
           return;
         }
         // In prompt split mode, Tab switches between prompt/response panes
@@ -218,17 +226,21 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
               openedFilePath ? (
                 /* File open: tree as narrow sidebar + dedicated viewer */
                 <>
-                  <FileTree
-                    entries={fileTree.entries}
-                    selectedIndex={fileTree.selectedIndex}
-                    focused={focusedPanel === 'filetree'}
-                    loading={fileTree.loading}
-                    openedPath={openedFilePath}
-                  />
-                  {promptSplitMode && openedFilePath ? (
+                  {/* Hide tree when zoomed for maximum screen real estate */}
+                  {!(promptSplitMode && promptZoomedPane) && (
+                    <FileTree
+                      entries={fileTree.entries}
+                      selectedIndex={fileTree.selectedIndex}
+                      focused={focusedPanel === 'filetree'}
+                      loading={fileTree.loading}
+                      openedPath={openedFilePath}
+                    />
+                  )}
+                  {promptSplitMode ? (
                     <PromptSplitViewer
                       filePath={openedFilePath}
                       focusedPane={promptFocusedPane}
+                      zoomedPane={promptZoomedPane}
                     />
                   ) : (
                     <FileViewer
@@ -286,6 +298,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         fileOpen={!!openedFilePath}
         promptSplitMode={promptSplitMode}
         isPromptFile={!!(openedFilePath && isPromptFile(openedFilePath))}
+        promptZoomed={!!promptZoomedPane}
       />
     </Box>
   );
