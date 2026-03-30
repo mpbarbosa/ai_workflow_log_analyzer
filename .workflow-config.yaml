@@ -75,3 +75,25 @@ linting:
 
 git:
   tag_on_run: false     # tagging handled manually; disable during workflow runs
+
+# Per-step prompt guidance — consumed by ai_workflow.js when building step prompts.
+# These entries tighten the instructions that the documentation_expert persona
+# receives, reflecting lessons from the 2026-03-29 run analysis.
+step_overrides:
+  step_02:                    # consistency analysis (documentation_expert)
+    quality_checks:
+      cross_reference_flagging:
+        # Only raise a missing-cross-reference finding when the filename pairing
+        # strongly implies a documented relationship — e.g. a source file and a
+        # same-stem doc file: `metrics_parser.ts` ↔ `metrics_parser.md`.
+        # Do NOT flag loosely related filenames or infer relationships from
+        # directory co-location alone.
+        require_strong_filename_pattern: true
+        example_valid_pair: "module.ts + module.md (same stem, different extension)"
+        example_invalid_pair: "CHANGELOG.md + README.md (different purposes, no implicit link)"
+      speculative_findings:
+        # Outdated version numbers and missing feature docs MUST NOT be flagged
+        # unless the evidence appears explicitly in the broken-refs scan or the
+        # provided filenames list.  Silence is correct when content has not been shown.
+        block_version_speculation: true
+        block_feature_doc_speculation: true
