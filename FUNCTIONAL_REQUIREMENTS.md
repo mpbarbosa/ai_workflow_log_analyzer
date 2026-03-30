@@ -167,4 +167,17 @@ The CLI shall support `--skip-prompt-quality` (faster, no SDK) and `--skip-summa
 
 ---
 
+## Roadmap Minor Issues
+
+Issues identified during automated log audits and addressed outside of versioned releases.
+
+| ID     | Description                                         | Priority | Status |
+|--------|-----------------------------------------------------|----------|--------|
+| RI-001 | Test suites failed to run: jest.mock() in ESM mode  | Medium   | Done   |
+| RI-002 | `.github/skills/` directory undocumented            | Medium   | Done   |
+| RI-003 | Markdownlint not configured; 152 violations unfixed | Medium   | Done   |
+| RI-004 | Sequential await in `analyzeAllPrompts`             | Low      | Done   |
+
+---
+
 *Applies to **v0.2.0**. Update this line whenever the package version is bumped.*
