@@ -30,6 +30,7 @@ const FILTER_LABELS: Record<IssueFilter, string> = {
   failure: 'Failures',
   performance: 'Perf',
   bug: 'Bugs',
+  documentation: 'Docs',
   prompt_quality: 'Prompt Quality',
 };
 

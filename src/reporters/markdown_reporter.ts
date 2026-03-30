@@ -17,6 +17,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   failure: 'Failure',
   performance: 'Performance',
   bug: 'Bug',
+  documentation: 'Documentation',
   prompt_quality: 'Prompt Quality',
 };
 
@@ -35,6 +36,12 @@ function formatIssue(issue: Issue): string {
   if (issue.stepId) lines.push(`- **Step**: \`${issue.stepId}\``);
   if (issue.timestamp) lines.push(`- **Time**: ${issue.timestamp.toISOString()}`);
   lines.push(``, issue.detail);
+  if (issue.rootCause) {
+    lines.push(``, `**Root Cause**: ${issue.rootCause}`);
+  }
+  if (issue.fixRecommendation) {
+    lines.push(``, `**Recommended Fix**: ${issue.fixRecommendation}`);
+  }
   if (issue.evidence) {
     lines.push(``, `<details><summary>Evidence</summary>`, ``, `\`\`\``, issue.evidence, `\`\`\``, `</details>`);
   }
@@ -102,7 +109,7 @@ export function toMarkdown(report: AnalysisReport): string {
   );
 
   // Issues by category
-  for (const category of ['failure', 'performance', 'bug', 'prompt_quality'] as const) {
+  for (const category of ['failure', 'performance', 'bug', 'documentation', 'prompt_quality'] as const) {
     const categoryIssues = issues.filter((i) => i.category === category);
     if (categoryIssues.length === 0) continue;
     sections.push(``, `## ${CATEGORY_LABEL[category]} Issues (${categoryIssues.length})`, ``);

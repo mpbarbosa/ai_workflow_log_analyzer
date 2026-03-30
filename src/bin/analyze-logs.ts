@@ -7,14 +7,39 @@
 
 import { Command } from 'commander';
 import { resolve, join } from 'node:path';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, readdir, mkdir } from 'node:fs/promises';
 import chalk from 'chalk';
+
+/**
+ * Returns (and creates) the next step directory for a given run's analysis output.
+ * Path: <projectRoot>/.ai_workflow/analysis/<runId>/step_<N>
+ */
+async function resolveAnalysisStepDir(projectRoot: string, runId: string): Promise<string> {
+  const analysisRunDir = join(projectRoot, '.ai_workflow', 'analysis', runId);
+
+  let existingSteps: string[] = [];
+  try {
+    const entries = await readdir(analysisRunDir);
+    existingSteps = entries.filter((e) => /^step_\d+$/.test(e));
+  } catch {
+    // directory doesn't exist yet — start at step_1
+  }
+
+  const nextStep =
+    existingSteps.length > 0
+      ? Math.max(...existingSteps.map((e) => parseInt(e.replace('step_', ''), 10))) + 1
+      : 1;
+
+  const stepDir = join(analysisRunDir, `step_${nextStep}`);
+  await mkdir(stepDir, { recursive: true });
+  return stepDir;
+}
 
 const program = new Command();
 
 program
   .name('analyze-logs')
-  .version('0.2.0')
+  .version('0.2.1')
   .description('Analyze ai_workflow.js execution logs for failures, bugs, prompt quality, and performance issues')
   .argument('[project-root]', 'Root directory of the ai_workflow.js project to analyze', process.cwd())
   .option('--project <path>', 'Alias for [project-root] positional argument')
@@ -46,7 +71,6 @@ program
     }
 
     // Non-interactive: find run directory
-    const { readdir } = await import('node:fs/promises');
     let runDir: string;
 
     if (opts.run) {
@@ -104,11 +128,20 @@ program
     process.stdout.write('\n');
     console.log(chalk.green(`✓ Analysis complete: ${report.counts.total} issues found (${report.counts.critical} critical)`));
 
+    // Lazily resolved on first default-path output; shared between JSON and MD so both land in the same step dir.
+    let analysisStepDir: string | undefined;
+
     // JSON output
     if (opts.json !== undefined) {
       const { toJson } = await import('../reporters/json_reporter.js');
       const json = toJson(report);
-      const outPath = typeof opts.json === 'string' ? opts.json : `analysis-${report.runId}.json`;
+      let outPath: string;
+      if (typeof opts.json === 'string') {
+        outPath = opts.json;
+      } else {
+        analysisStepDir ??= await resolveAnalysisStepDir(projectRoot, report.runId);
+        outPath = join(analysisStepDir, 'report.json');
+      }
       await writeFile(outPath, json, 'utf8');
       console.log(chalk.green(`JSON report written to: ${outPath}`));
     }
@@ -117,7 +150,13 @@ program
     if (opts.md !== undefined) {
       const { toMarkdown } = await import('../reporters/markdown_reporter.js');
       const md = toMarkdown(report);
-      const outPath = typeof opts.md === 'string' ? opts.md : `analysis-${report.runId}.md`;
+      let outPath: string;
+      if (typeof opts.md === 'string') {
+        outPath = opts.md;
+      } else {
+        analysisStepDir ??= await resolveAnalysisStepDir(projectRoot, report.runId);
+        outPath = join(analysisStepDir, 'report.md');
+      }
       await writeFile(outPath, md, 'utf8');
       console.log(chalk.green(`Markdown report written to: ${outPath}`));
     }

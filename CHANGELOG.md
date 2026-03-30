@@ -6,11 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [0.2.0] — 2026-03-29
+## [0.2.1] — 2026-03-29
 
 ### Added
 
 #### Core Analysis Pipeline
+
 - Log parser: reads `.jsonl` step log files → typed `AnyLogEvent[]` stream
 - Metrics parser: reads `.ai_workflow/metrics/` JSON files
 - Prompt parser: reads `prompts/step_XX/*.md` → `PromptRecord[]`; `parsePromptParts()` for section parsing
@@ -23,6 +24,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Markdown reporter: `toMarkdown(report)` for human-readable output
 
 #### Interactive TUI Dashboard (Ink/React)
+
 - Analysis mode: run selector + issues panel + metrics panel + detail overlay
 - Issue filtering: All / Failures / Performance / Bugs / Prompt Quality (`[f]`)
 - Issue detail overlay: full-screen drill-down with LLM analysis field
@@ -33,6 +35,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Help overlay (`[h]`): full keyboard reference organised by mode
 
 #### Files Mode (IDE-like Viewer)
+
 - File tree navigator: recursive expand/collapse for any run directory
 - Read-only file viewer: log line colour-coding, `[↑↓]`/`[PgUp/Dn]`/`[g/G]` navigation
 - Markdown renderer: H1–H3 headings, bold, italic, inline code, fenced code blocks, lists, blockquotes, HR
@@ -43,6 +46,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Supports `**Label**:` and `**Label:**` section boundary formats
 
 #### CLI
+
 - `npm start -- <projectRoot>` or `--project <path>` to specify project
 - `--json [output]` and `--md [output]` for headless export
 - `--run <run-id>` to target a specific workflow run
@@ -50,6 +54,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `--threshold-config <path>` for JSON/YAML threshold overrides
 
 #### Tooling / Project Setup
+
 - TypeScript with `module: NodeNext` + `tsx` runtime (no build step for development)
 - Jest test suite: 3 suites, 21 tests
 - ESLint with TypeScript plugin

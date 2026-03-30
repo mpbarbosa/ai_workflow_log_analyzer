@@ -223,4 +223,4 @@ State 1: Tree only           State 2: Tree + FileViewer     State 3: PARTS / SPL
 
 ---
 
-*Applies to **v0.2.0**. Update this line whenever the package version is bumped.*
+*Applies to **v0.2.1**. Update this line whenever the package version is bumped.*
