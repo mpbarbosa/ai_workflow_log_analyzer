@@ -5,7 +5,7 @@ project:
   type: "typescript-tool"
   kind: "log_analysis_tui"  # domain: interactive TUI for ai_workflow.js log analysis
   version: "0.2.1"          # keep in sync with package.json
-  description: "Interactive TUI tool to analyze ai_workflow.js execution logs — surfaces failures, bugs, prompt quality issues, and performance regressions using the GitHub Copilot SDK"
+  description: "Developer-facing interactive TUI tool for internal contributors to analyze ai_workflow.js execution logs — surfaces failures, bugs, prompt quality issues, and performance regressions using the GitHub Copilot SDK"
 
 tech_stack:
   primary_language: "typescript"
@@ -25,6 +25,15 @@ structure:
   test_dirs:
     - test
   docs_dirs: []
+  # Key documentation files for this project (referenced in prompt context).
+  # Note: dynamic source/doc file counts are computed at workflow run time from
+  # the filesystem and will reflect the live state — no manual updates needed.
+  key_docs:
+    - README.md
+    - ARCHITECTURE.md
+    - FUNCTIONAL_REQUIREMENTS.md
+    - CONTRIBUTING.md
+    - CHANGELOG.md
 
 workflow:
   stages:
@@ -80,6 +89,44 @@ git:
 # These entries tighten the instructions that the documentation_expert persona
 # receives, reflecting lessons from the 2026-03-29 run analysis.
 step_overrides:
+  step_01:                    # documentation analysis (documentation_expert)
+    task_scope:
+      # Explicitly list the documentation files eligible for edits in this step.
+      # Only files in this list may receive before/after edit blocks.
+      # All other files are read-only context regardless of what the diff shows.
+      eligible_docs:
+        - README.md
+        - ARCHITECTURE.md
+        - FUNCTIONAL_REQUIREMENTS.md
+        - CONTRIBUTING.md
+        - CHANGELOG.md
+        - API.md
+        - GETTING_STARTED.md
+      # Before editing any file, the persona MUST verify the change satisfies at
+      # least one of the criteria below.  "Looks incomplete" is not sufficient.
+      # See CONTRIBUTING.md §Documentation Audience and §Code Documentation Standards.
+      standards_reference: "CONTRIBUTING.md §Documentation Audience, §Code Documentation Standards, §Cross-Reference Conventions"
+      valid_update_criteria:
+        - correctness_error: >
+            The documentation contains a factual error or directly contradicts the
+            current codebase (e.g., wrong flag name, incorrect module path, stale
+            architecture description).
+        - outdated_feature_description: >
+            A feature, CLI flag, or behaviour described in the docs no longer matches
+            what the changed source files implement.
+        - missing_jsdoc_on_new_export: >
+            A newly added or modified exported function, class, or interface in the
+            changed files lacks a JSDoc block entirely (breaks IDE hover docs and
+            AI autocomplete — see CONTRIBUTING.md §Exported functions).
+        - broken_cross_reference: >
+            A link or section reference in a documentation file points to a file,
+            heading, or anchor that no longer exists after the current changes.
+        - changelog_entry_missing: >
+            The changed files introduce a user-visible feature, fix, or breaking
+            change that is not yet recorded in CHANGELOG.md.
+      # Do NOT edit documentation files speculatively or for style reasons alone.
+      # Silence is correct when no criterion above is met.
+      block_speculative_edits: true
   step_02:                    # consistency analysis (documentation_expert)
     quality_checks:
       cross_reference_flagging:
