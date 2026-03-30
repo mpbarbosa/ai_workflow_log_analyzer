@@ -109,7 +109,7 @@ describe('analyzeAllPrompts', () => {
     }
   });
 
-  it('analyzes all prompt records sequentially and returns results', async () => {
+  it('analyzes all prompt records concurrently and returns results', async () => {
     mockAnalyzePromptQuality
       .mockResolvedValueOnce({
         score: 80,
@@ -146,7 +146,10 @@ describe('analyzeAllPrompts', () => {
     const progressCalls: Array<[number, number]> = [];
     const onProgress = (done: number, total: number) => progressCalls.push([done, total]);
     await analyzeAllPrompts(records, DEFAULT_THRESHOLDS, onProgress);
-    expect(progressCalls).toEqual([[1, 3], [2, 3], [3, 3]]);
+    expect(progressCalls).toHaveLength(3);
+    expect(progressCalls.every(([, total]) => total === 3)).toBe(true);
+    const doneCounts = progressCalls.map(([done]) => done).sort();
+    expect(doneCounts).toEqual([1, 2, 3]);
   });
 
   it('returns empty array if no records', async () => {

@@ -47,18 +47,19 @@ export async function analyzePromptRecord(
 
 /**
  * Analyzes all prompt records for a run.
- * Runs sequentially to avoid overwhelming the Copilot SDK.
+ * Runs concurrently with Promise.all for reduced total latency.
  */
 export async function analyzeAllPrompts(
   records: PromptRecord[],
   thresholds: ThresholdConfig = DEFAULT_THRESHOLDS,
   onProgress?: (done: number, total: number) => void
 ): Promise<PromptQualityResult[]> {
-  const results: PromptQualityResult[] = [];
-  for (let i = 0; i < records.length; i++) {
-    const result = await analyzePromptRecord(records[i], thresholds);
-    results.push(result);
-    onProgress?.(i + 1, records.length);
-  }
-  return results;
+  let done = 0;
+  return Promise.all(
+    records.map(async (record) => {
+      const result = await analyzePromptRecord(record, thresholds);
+      onProgress?.(++done, records.length);
+      return result;
+    })
+  );
 }
