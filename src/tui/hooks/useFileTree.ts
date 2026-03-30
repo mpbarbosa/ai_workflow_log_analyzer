@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { readdir } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 
 export interface FileEntry {
@@ -32,8 +32,10 @@ async function scanDir(dir: string, depth: number): Promise<FileEntry[]> {
   const entries: FileEntry[] = [];
   for (const name of names) {
     const full = join(dir, name);
-    // Heuristic: names without extension are dirs (steps/, prompts/)
-    const isDir = !name.includes('.') || name.endsWith('/');
+    let isDir = false;
+    try {
+      isDir = (await stat(full)).isDirectory();
+    } catch { /* treat as file on error */ }
     if (isDir) {
       entries.push({
         label: name + '/',
@@ -62,8 +64,11 @@ async function buildTree(runDir: string, analysisDir: string | null): Promise<Fi
 
   for (const name of topNames) {
     const full = join(runDir, name);
-    if (!name.includes('.')) {
-      // Directory
+    let isDir = false;
+    try {
+      isDir = (await stat(full)).isDirectory();
+    } catch { /* treat as file on error */ }
+    if (isDir) {
       result.push({ label: name + '/', filePath: null, depth: 0, isDir: true, isExpanded: false, key: full });
     } else {
       result.push({ label: name, filePath: full, depth: 0, isDir: false, key: full });
