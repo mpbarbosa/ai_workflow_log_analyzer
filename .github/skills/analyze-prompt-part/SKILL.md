@@ -31,15 +31,40 @@ You will be given:
 2. SECTION CONTENT — the raw text of that section
 3. CODEBASE CONTEXT — relevant source files from the project
 
-**Section-type analysis rules — apply before evaluating:**
+**Section-type analysis rules — identify your section type FIRST, then apply the
+matching rule exclusively. Do not apply rules from other section types.**
 
-- If SECTION LABEL is "Role" or "Persona":
-  The section defines WHO performs the task. Evaluate whether the persona is
-  appropriate for the TASK described within that same section (e.g. a documentation
-  specialist assigned to review markdown files is correct, even if the project's
-  TypeScript source contains no documentation logic). Do NOT penalise a role for
-  not matching the source code implementation. Only flag the role if it contradicts
-  the stated task or claims skills irrelevant to that task.
+---
+
+> **IMPORTANT — Role / Persona sections (read this before anything else):**
+>
+> If SECTION LABEL is "Role" or "Persona", apply ONLY the rule below and ignore
+> all other rules in this block.
+>
+> A Role section defines WHO performs the task, not what the project's source
+> code does. The CODEBASE CONTEXT is provided for reference only — **do NOT use
+> it to assess whether a role is appropriate.** Evaluate the role solely against
+> the TASK stated within the same prompt section.
+>
+> A role is well-aligned when its stated expertise is relevant to its stated task.
+> A role is misaligned only when it directly contradicts the stated task (e.g. a
+> "database administrator" assigned to write CSS) or claims skills that are
+> entirely irrelevant to that task.
+>
+> **Do NOT deduct points because the source code does not implement the role's
+> domain.** A documentation specialist reviewing markdown files is perfectly
+> aligned even if the project's TypeScript source contains zero documentation
+> logic. The source code and the role operate at different layers.
+>
+> ❌ Incorrect reasoning (do not do this):
+>   "The role describes a documentation specialist, but the codebase context
+>    shows bug_analyzer.ts with no documentation logic → alignment is weak."
+>
+> ✅ Correct reasoning:
+>   "The role describes a documentation specialist. The stated task is to review
+>    markdown documentation files. The expertise matches the task → well-aligned."
+
+---
 
 - If SECTION LABEL is "Task", "Approach", "Context", or similar:
   Assess technical accuracy — do the instructions, file references, and assumptions
@@ -49,7 +74,7 @@ You will be given:
   Verify boundary conditions are achievable given the real project state.
 
 Your task:
-- Apply the appropriate section-type rule above
+- Identify your section type and apply its rule exclusively
 - Identify any gaps, outdated references, incorrect assumptions, or missing context
 - Rate the alignment on a scale of 1–10 (10 = perfectly aligned)
 - Provide specific, actionable suggestions for improving this prompt section
@@ -104,22 +129,42 @@ template above to produce a structured assessment.
 
 ## Example Output
 
+**Role section** — evaluated against its task, not the source code:
+
+```markdown
+## Alignment Score: 10/10
+
+## Summary
+The Role section describes a documentation specialist responsible for reviewing
+markdown files and validating cross-references. This expertise is directly
+relevant to the stated task. The codebase source code is not relevant to this
+assessment — the role is evaluated only against the task it is assigned.
+
+## Findings
+- Role expertise (documentation QA, technical writing standards) matches the
+  stated task (documentation consistency analysis) — well-aligned.
+
+## Suggestions
+1. No changes needed. The role is appropriately scoped to its task.
+```
+
+**Task section** — evaluated for technical accuracy against the codebase:
+
 ```markdown
 ## Alignment Score: 7/10
 
 ## Summary
-The Role section accurately describes the persona and core competencies needed
-for the task. However, it references `src/lib/validator.ts` which was refactored
-into `src/validators/` in the last release cycle, and the mention of "YAML schema
-validation" doesn't match the current JSON-only validation approach.
+The Task section accurately describes the validation goal but references
+`src/lib/validator.ts` which was refactored into `src/validators/` in the last
+release cycle, and mentions "YAML schema validation" which doesn't match the
+current JSON-only validation approach.
 
 ## Findings
 - References `src/lib/validator.ts` — file moved to `src/validators/index.ts`
 - Claims YAML validation support — codebase only handles JSON (see `src/validators/json_validator.ts:12`)
-- Persona expertise list is accurate and well-scoped
 
 ## Suggestions
 1. Update file path reference from `src/lib/validator.ts` to `src/validators/index.ts`
-2. Remove YAML validation from expertise list or add a TODO to implement it
+2. Remove YAML validation from task description or add a TODO to implement it
 3. Consider adding `src/validators/schema_registry.ts` to the context section
 ```
