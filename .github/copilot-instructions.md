@@ -113,7 +113,20 @@ globalThis.__promptSplitScroll  = { up, down, pageUp, pageDown, jumpStart, jumpE
 
 ## Documentation Standards
 
-**This is a developer-facing tool** — all documentation targets internal contributors and AI agents, not external end-users. Refer to `CONTRIBUTING.md` for the authoritative standards; the key points are:
+**This is a developer-facing tool** — all documentation targets internal contributors and AI agents. **There are no external end-users: do not create "User Guides", end-user tutorials, or FAQs aimed at the general public.** When writing prose documentation, assume the reader is a developer who is new to the codebase and needs to understand the *why*, not just the *what*.
+
+### Documentation files
+
+| File | Primary audience |
+|------|-----------------|
+| `README.md` | Anyone installing or running the CLI — installation, quick-start, feature overview |
+| `ARCHITECTURE.md` | Internal contributors and AI agents — system design, component relationships |
+| `FUNCTIONAL_REQUIREMENTS.md` | Internal contributors and AI agents — feature specifications and constraints |
+| `CONTRIBUTING.md` | Internal contributors and AI agents — standards, conventions, and terminology |
+| `.github/copilot-instructions.md` | AI agents (GitHub Copilot, workflow LLMs) — canonical project context |
+| Inline JSDoc / TSDoc | Any developer using the package — IDE hover docs, AI autocomplete context |
+
+Refer to `CONTRIBUTING.md` § "Documentation Audience" for the authoritative audience table. The key code documentation rules are:
 
 - Every `src/` file must open with a JSDoc module header (`/** … @module path/to/module */`)
 - Every exported function, class, and interface needs a JSDoc block (one-liner is fine when the signature is self-explanatory)
