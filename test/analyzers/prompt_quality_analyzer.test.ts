@@ -1,10 +1,14 @@
-import { analyzePromptRecord, analyzeAllPrompts } from '../../src/analyzers/prompt_quality_analyzer';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
-jest.mock('../../src/lib/copilot_client', () => ({
-  analyzePromptQuality: jest.fn(),
+const mockAnalyzePromptQuality = jest.fn();
+
+jest.unstable_mockModule('../../src/lib/copilot_client', () => ({
+  analyzePromptQuality: mockAnalyzePromptQuality,
 }));
 
-import { analyzePromptQuality } from '../../src/lib/copilot_client';
+const { analyzePromptRecord, analyzeAllPrompts } = (await import(
+  '../../src/analyzers/prompt_quality_analyzer'
+)) as typeof import('../../src/analyzers/prompt_quality_analyzer');
 
 const DEFAULT_THRESHOLDS = {
   promptQualityMinScore: 60,
@@ -29,7 +33,7 @@ describe('analyzePromptRecord', () => {
   });
 
   it('returns result with no issue if score >= threshold', async () => {
-    (analyzePromptQuality as jest.Mock).mockResolvedValue({
+    mockAnalyzePromptQuality.mockResolvedValue({
       score: 80,
       feedback: 'Good prompt.',
       suggestions: [],
@@ -42,7 +46,7 @@ describe('analyzePromptRecord', () => {
   });
 
   it('returns result with medium severity issue if score below threshold but >= 40', async () => {
-    (analyzePromptQuality as jest.Mock).mockResolvedValue({
+    mockAnalyzePromptQuality.mockResolvedValue({
       score: 50,
       feedback: 'Prompt could be more specific.',
       suggestions: ['Add input constraints.'],
@@ -58,7 +62,7 @@ describe('analyzePromptRecord', () => {
   });
 
   it('returns result with high severity issue if score < 40', async () => {
-    (analyzePromptQuality as jest.Mock).mockResolvedValue({
+    mockAnalyzePromptQuality.mockResolvedValue({
       score: 30,
       feedback: 'Prompt is too vague.',
       suggestions: ['Specify the types.', 'Provide examples.'],
@@ -72,7 +76,7 @@ describe('analyzePromptRecord', () => {
   });
 
   it('handles prompt truncation in evidence field', async () => {
-    (analyzePromptQuality as jest.Mock).mockResolvedValue({
+    mockAnalyzePromptQuality.mockResolvedValue({
       score: 30,
       feedback: 'Bad prompt.',
       suggestions: [],
@@ -85,7 +89,7 @@ describe('analyzePromptRecord', () => {
   });
 
   it('uses default thresholds if not provided', async () => {
-    (analyzePromptQuality as jest.Mock).mockResolvedValue({
+    mockAnalyzePromptQuality.mockResolvedValue({
       score: 50,
       feedback: 'Prompt could be better.',
       suggestions: [],
@@ -106,7 +110,7 @@ describe('analyzeAllPrompts', () => {
   });
 
   it('analyzes all prompt records sequentially and returns results', async () => {
-    (analyzePromptQuality as jest.Mock)
+    mockAnalyzePromptQuality
       .mockResolvedValueOnce({
         score: 80,
         feedback: 'Good prompt.',
@@ -132,7 +136,7 @@ describe('analyzeAllPrompts', () => {
   });
 
   it('calls onProgress callback with correct values', async () => {
-    (analyzePromptQuality as jest.Mock)
+    mockAnalyzePromptQuality
       .mockResolvedValue({ score: 80, feedback: 'Ok.', suggestions: [] });
     const records = [
       { ...basePromptRecord, stepId: 'step-1' },
@@ -151,7 +155,7 @@ describe('analyzeAllPrompts', () => {
   });
 
   it('handles errors thrown by analyzePromptQuality', async () => {
-    (analyzePromptQuality as jest.Mock).mockRejectedValue(new Error('SDK error'));
+    mockAnalyzePromptQuality.mockRejectedValue(new Error('SDK error'));
     const record = { ...basePromptRecord, stepId: 'step-err' };
     await expect(analyzeAllPrompts([record], DEFAULT_THRESHOLDS)).rejects.toThrow('SDK error');
   });

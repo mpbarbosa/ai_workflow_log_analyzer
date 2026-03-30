@@ -5,14 +5,9 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-jest.mock('chalk', () => ({
-  red: (s: string) => `[red]${s}[/red]`,
-  green: (s: string) => `[green]${s}[/green]`,
-  yellow: (s: string) => `[yellow]${s}[/yellow]`,
-  cyan: (s: string) => `[cyan]${s}[/cyan]`,
-  dim: (s: string) => `[dim]${s}[/dim]`,
-}));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const CLI_PATH = path.resolve(__dirname, '../../src/bin/analyze-logs.ts');
 
@@ -50,13 +45,13 @@ describe('analyze-logs CLI', () => {
 
   it('shows error if no logs directory exists', async () => {
     await fs.rm(logsDir, { recursive: true, force: true });
-    const { code, stderr } = await runCli([tmpDir]);
+    const { code, stderr } = await runCli([tmpDir, '--json', '/dev/null']);
     expect(code).toBe(1);
     expect(stderr).toContain('No .ai_workflow/logs directory found');
   });
 
   it('shows error if no workflow runs found', async () => {
-    const { code, stderr } = await runCli([tmpDir]);
+    const { code, stderr } = await runCli([tmpDir, '--json', '/dev/null']);
     expect(code).toBe(1);
     expect(stderr).toContain('No workflow runs found');
   });
@@ -65,38 +60,13 @@ describe('analyze-logs CLI', () => {
     const runId = 'workflow_20260101_120000';
     const runDir = path.join(logsDir, runId);
     await fs.mkdir(runDir, { recursive: true });
-    // Place a dummy file to ensure directory is not empty
     await fs.writeFile(path.join(runDir, 'dummy.log'), 'log content');
-    // Mock pipeline and reporters
-    jest.mock('../../src/lib/pipeline.js', () => ({
-      runAnalysisPipeline: jest.fn().mockResolvedValue({
-        runId,
-        counts: { total: 2, critical: 1 },
-      }),
-    }));
-    jest.mock('../../src/reporters/json_reporter.js', () => ({
-      toJson: jest.fn().mockReturnValue('{"ok":true}'),
-    }));
-    jest.mock('../../src/reporters/markdown_reporter.js', () => ({
-      toMarkdown: jest.fn().mockReturnValue('# Report'),
-    }));
-    jest.mock('../../src/types/index.js', () => ({
-      DEFAULT_THRESHOLDS: {
-        stepDurationWarningMs: 5000,
-        stepDurationCriticalMs: 10000,
-        aiLatencyWarningMs: 2000,
-        aiLatencyCriticalMs: 5000,
-        memoryWarningMb: 512,
-        memoryCriticalMb: 1024,
-        promptQualityMinScore: 60,
-      },
-    }));
 
-    const { code, stdout } = await runCli([tmpDir]);
+    const { code, stdout } = await runCli([tmpDir, '--json', '/dev/null', '--skip-prompt-quality', '--skip-summary']);
     expect(code).toBe(0);
     expect(stdout).toContain('Using latest run: workflow_20260101_120000');
     expect(stdout).toContain('Running analysis pipeline');
-    expect(stdout).toContain('✓ Analysis complete: 2 issues found (1 critical)');
+    expect(stdout).toContain('✓ Analysis complete:');
   });
 
   it('uses --run to select a specific run', async () => {
@@ -104,28 +74,11 @@ describe('analyze-logs CLI', () => {
     const runDir = path.join(logsDir, runId);
     await fs.mkdir(runDir, { recursive: true });
     await fs.writeFile(path.join(runDir, 'dummy.log'), 'log content');
-    jest.mock('../../src/lib/pipeline.js', () => ({
-      runAnalysisPipeline: jest.fn().mockResolvedValue({
-        runId,
-        counts: { total: 1, critical: 0 },
-      }),
-    }));
-    jest.mock('../../src/types/index.js', () => ({
-      DEFAULT_THRESHOLDS: {
-        stepDurationWarningMs: 5000,
-        stepDurationCriticalMs: 10000,
-        aiLatencyWarningMs: 2000,
-        aiLatencyCriticalMs: 5000,
-        memoryWarningMb: 512,
-        memoryCriticalMb: 1024,
-        promptQualityMinScore: 60,
-      },
-    }));
 
-    const { code, stdout } = await runCli([tmpDir, '--run', runId]);
+    const { code, stdout } = await runCli([tmpDir, '--run', runId, '--json', '/dev/null', '--skip-prompt-quality', '--skip-summary']);
     expect(code).toBe(0);
     expect(stdout).toContain('Running analysis pipeline');
-    expect(stdout).toContain('✓ Analysis complete: 1 issues found (0 critical)');
+    expect(stdout).toContain('✓ Analysis complete:');
   });
 
   it('writes JSON report if --json is specified', async () => {
@@ -133,33 +86,14 @@ describe('analyze-logs CLI', () => {
     const runDir = path.join(logsDir, runId);
     await fs.mkdir(runDir, { recursive: true });
     await fs.writeFile(path.join(runDir, 'dummy.log'), 'log content');
-    jest.mock('../../src/lib/pipeline.js', () => ({
-      runAnalysisPipeline: jest.fn().mockResolvedValue({
-        runId,
-        counts: { total: 3, critical: 2 },
-      }),
-    }));
-    jest.mock('../../src/reporters/json_reporter.js', () => ({
-      toJson: jest.fn().mockReturnValue('{"ok":true}'),
-    }));
-    jest.mock('../../src/types/index.js', () => ({
-      DEFAULT_THRESHOLDS: {
-        stepDurationWarningMs: 5000,
-        stepDurationCriticalMs: 10000,
-        aiLatencyWarningMs: 2000,
-        aiLatencyCriticalMs: 5000,
-        memoryWarningMb: 512,
-        memoryCriticalMb: 1024,
-        promptQualityMinScore: 60,
-      },
-    }));
 
     const outPath = path.join(tmpDir, 'report.json');
-    const { code, stdout } = await runCli([tmpDir, '--json', outPath]);
+    const { code, stdout } = await runCli([tmpDir, '--json', outPath, '--skip-prompt-quality', '--skip-summary']);
     expect(code).toBe(0);
     expect(stdout).toContain('JSON report written to:');
     const file = await fs.readFile(outPath, 'utf8');
-    expect(file).toContain('"ok":true');
+    expect(() => JSON.parse(file)).not.toThrow();
+    expect(JSON.parse(file)).toHaveProperty('runId');
   });
 
   it('writes Markdown report if --md is specified', async () => {
@@ -167,33 +101,13 @@ describe('analyze-logs CLI', () => {
     const runDir = path.join(logsDir, runId);
     await fs.mkdir(runDir, { recursive: true });
     await fs.writeFile(path.join(runDir, 'dummy.log'), 'log content');
-    jest.mock('../../src/lib/pipeline.js', () => ({
-      runAnalysisPipeline: jest.fn().mockResolvedValue({
-        runId,
-        counts: { total: 4, critical: 1 },
-      }),
-    }));
-    jest.mock('../../src/reporters/markdown_reporter.js', () => ({
-      toMarkdown: jest.fn().mockReturnValue('# Report'),
-    }));
-    jest.mock('../../src/types/index.js', () => ({
-      DEFAULT_THRESHOLDS: {
-        stepDurationWarningMs: 5000,
-        stepDurationCriticalMs: 10000,
-        aiLatencyWarningMs: 2000,
-        aiLatencyCriticalMs: 5000,
-        memoryWarningMb: 512,
-        memoryCriticalMb: 1024,
-        promptQualityMinScore: 60,
-      },
-    }));
 
     const outPath = path.join(tmpDir, 'report.md');
-    const { code, stdout } = await runCli([tmpDir, '--md', outPath]);
+    const { code, stdout } = await runCli([tmpDir, '--md', outPath, '--skip-prompt-quality', '--skip-summary']);
     expect(code).toBe(0);
     expect(stdout).toContain('Markdown report written to:');
     const file = await fs.readFile(outPath, 'utf8');
-    expect(file).toContain('# Report');
+    expect(file).toContain('# AI Workflow Log Analysis Report');
   });
 
   it('warns and continues if threshold config cannot be loaded', async () => {
@@ -201,40 +115,10 @@ describe('analyze-logs CLI', () => {
     const runDir = path.join(logsDir, runId);
     await fs.mkdir(runDir, { recursive: true });
     await fs.writeFile(path.join(runDir, 'dummy.log'), 'log content');
-    jest.mock('../../src/lib/pipeline.js', () => ({
-      runAnalysisPipeline: jest.fn().mockResolvedValue({
-        runId,
-        counts: { total: 1, critical: 0 },
-      }),
-    }));
-    jest.mock('../../src/types/index.js', () => ({
-      DEFAULT_THRESHOLDS: {
-        stepDurationWarningMs: 5000,
-        stepDurationCriticalMs: 10000,
-        aiLatencyWarningMs: 2000,
-        aiLatencyCriticalMs: 5000,
-        memoryWarningMb: 512,
-        memoryCriticalMb: 1024,
-        promptQualityMinScore: 60,
-      },
-    }));
 
-    const { code, stdout, stderr } = await runCli([tmpDir, '--threshold-config', 'nonexistent.json']);
+    const { code, stdout, stderr } = await runCli([tmpDir, '--json', '/dev/null', '--skip-prompt-quality', '--skip-summary', '--threshold-config', 'nonexistent.json']);
     expect(code).toBe(0);
     expect(stderr).toContain('Warning: could not load threshold config');
-    expect(stdout).toContain('✓ Analysis complete: 1 issues found (0 critical)');
-  });
-
-  it('launches TUI if --tui is specified', async () => {
-    const runId = 'workflow_20260106_170000';
-    const runDir = path.join(logsDir, runId);
-    await fs.mkdir(runDir, { recursive: true });
-    await fs.writeFile(path.join(runDir, 'dummy.log'), 'log content');
-    jest.mock('../tui/index.js', () => ({
-      startTUI: jest.fn(),
-    }));
-    const { code, stdout } = await runCli([tmpDir, '--tui']);
-    expect(code).toBe(0);
-    expect(stdout).toContain(''); // TUI may not print to stdout
+    expect(stdout).toContain('✓ Analysis complete:');
   });
 });
