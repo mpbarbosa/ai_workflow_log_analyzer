@@ -1,6 +1,8 @@
 # ai_workflow_log_analyzer
 
-A standalone CLI tool that analyzes [ai_workflow.js](https://github.com/your-org/ai_workflow.js) execution log files, surfacing failures, bugs, prompt quality issues, and performance regressions — powered by the GitHub Copilot SDK.
+A standalone CLI tool that analyzes [ai_workflow.js](https://github.com/your-org/ai_workflow.js) execution log
+files, surfacing failures, bugs, prompt quality issues, and performance regressions — powered by the GitHub Copilot
+SDK.
 
 ## Documentation
 
@@ -70,7 +72,7 @@ analyze-logs --threshold-config thresholds.yaml /path/to/project
 
 ### TUI Layout
 
-```
+```text
 ┌─ ai_workflow Log Analyzer ──────────── Run: workflow_20260326_224118 ─── ●LIVE ─┐
 ├── RUNS ──────┬──── ISSUES ──────────────────────────────┬──── METRICS ──────────┤
 │ > 2026-03-27 │ ✗ [FAIL]  step_05: CRITICAL 51.8s        │  LLM Latency (avg 24s)│
@@ -93,7 +95,7 @@ Press `v` to switch from Analysis mode into **Files mode**, which lets you brows
 
 #### State 1 — Tree only (no file open)
 
-```
+```text
 ┌─ ai_workflow Log Analyzer ──────────────────────────────────── 📂 FILES ─┐
 │ Run: workflow_20260327_012345                                              │
 ├───────────────────────────────────────────────────────────────────────────┤
@@ -114,7 +116,7 @@ Use `↑`/`↓` to navigate and `Enter` to expand directories or open a file.
 
 #### State 2 — Tree + file viewer (file open)
 
-```
+```text
 ┌─ ai_workflow Log Analyzer ──────────────────────────────────── 📂 FILES ─┐
 │ Run: workflow_20260327_012345                                              │
 ├──────────────────┬────────────────────────────────────────────────────────┤
@@ -137,7 +139,7 @@ For any open file, press `s` to switch to **Parts view** (structured section lis
 
 #### State 3a — Prompt split view (`p`)
 
-```
+```text
 ┌─ ai_workflow Log Analyzer ──────────────────────────────────── 📂 FILES ─┐
 │ Run: workflow_20260327_012345                                              │
 ├──────────────────┬──────────────────────────┬─────────────────────────────┤
@@ -159,7 +161,7 @@ For any open file, press `s` to switch to **Parts view** (structured section lis
 
 #### State 3b — Zoomed pane (`z`)
 
-```
+```text
 ┌─ ai_workflow Log Analyzer ──────────────────────────────────── 📂 FILES ─┐
 │ Run: workflow_20260327_012345             ⬛ ZOOM: PROMPT                  │
 ├───────────────────────────────────────────────────────────────────────────┤
@@ -186,7 +188,7 @@ Press `z` again to return to split view, or `p` to return to raw log view.
 
 Press `s` on any open file to switch into **Parts view**, which parses the file into named sections (bold-heading delimiters) and displays them as a navigable list:
 
-```
+```text
 ┌─ ai_workflow Log Analyzer ────────────────────────────── 📂 FILES › [PARTS] ─┐
 │ Run: workflow_20260327_012345                                                   │
 ├───────────────────────────────────────────────────────────────────────────────┤
@@ -208,7 +210,7 @@ Use `↑`/`↓` to navigate sections. Press `a` to stream a Copilot analysis of 
 
 With a part selected in Parts view, press `a` to open the **analysis overlay**:
 
-```
+```text
 ┌─ ai_workflow Log Analyzer ──────────────────────────── 📂 FILES › [ANALYZING] ─┐
 │ Run: workflow_20260327_012345                                                     │
 ├──────────────────────────────────────────────────────────────────────────────────┤
@@ -270,7 +272,7 @@ Press `Esc` to cancel in-flight streaming or to close a completed overlay.
 
 The tool reads the `.ai_workflow/` directory produced by ai_workflow.js:
 
-```
+```text
 <project>/.ai_workflow/
   logs/
     workflow_YYYYMMDD_HHMMSS/
@@ -346,7 +348,7 @@ npm run build
 
 ## Architecture
 
-```
+```text
 src/
 ├── types/index.ts              ← shared interfaces (LogEvent, Issue, …)
 ├── parsers/
@@ -387,7 +389,9 @@ src/
 
 ## Skills
 
-The `.github/skills/` directory contains [GitHub Copilot CLI skills](https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/about-assigning-tasks-to-copilot) for project-specific workflows. See [`.github/SKILLS.md`](.github/SKILLS.md) for the full list.
+The `.github/skills/` directory contains
+[GitHub Copilot CLI skills](https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/about-assigning-tasks-to-copilot)
+for project-specific workflows. See [`.github/SKILLS.md`](.github/SKILLS.md) for the full list.
 
 ## License
 

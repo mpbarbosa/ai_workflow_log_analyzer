@@ -2,11 +2,42 @@
 
 ## Overview
 
-`ai_workflow_log_analyzer` is a **standalone TypeScript/Ink TUI tool** that reads `.ai_workflow/logs/` directories produced by [ai_workflow.js](https://github.com/mpbarbosa/ai_workflow.js) and surfaces failures, bugs, prompt quality issues, and performance regressions in an interactive terminal dashboard.
+`ai_workflow_log_analyzer` is a **standalone TypeScript/Ink TUI tool** that reads `.ai_workflow/logs/` directories
+produced by [ai_workflow.js](https://github.com/mpbarbosa/ai_workflow.js) and surfaces failures, bugs, prompt quality
+issues, and performance regressions in an interactive terminal dashboard.
+
+### Run Directory Structure
+
+Every `workflow_YYYYMMDD_HHMMSS/` directory must contain a `run_metadata.json` file so the analyzer can identify its source project:
+
+```text
+workflow_YYYYMMDD_HHMMSS/
+├── run_metadata.json        ← { projectRoot, runId, timestamp }
+├── workflow.log             ← main text log (timestamp-prefixed lines)
+├── steps/
+│   ├── step_01.log
+│   └── step_02.log
+└── prompts/
+    └── step_01/
+        └── 001_persona.md
+```
+
+`run_metadata.json` shape:
+
+```json
+{
+  "projectRoot": "/absolute/path/to/project",
+  "runId": "workflow_YYYYMMDD_HHMMSS",
+  "timestamp": "2026-03-29T20:45:19.000Z"
+}
+```
+
+The parser tolerates a missing `run_metadata.json` (backward compatibility); `AnalysisReport.projectRoot` will be
+`undefined` in that case. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full log format contract.
 
 The codebase is split into two halves that share types but otherwise have no circular dependencies:
 
-```
+```text
 src/
 ├── parsers/         ← Read & parse raw log/prompt/metrics files from disk
 ├── analyzers/       ← Pure functions: detect issues from parsed data
@@ -45,6 +76,7 @@ All analyzers are **pure functions** — they take parsed data and return `Issue
 ### Pipeline (`src/lib/pipeline.ts`)
 
 `runAnalysisPipeline(runDir, metricsDir, opts)` orchestrates:
+
 1. **Parse** — parallel: `parseRunLogsToArray`, `parseRunPrompts`, `parseMetrics`
 2. **Analyze** — synchronous: failures, performance, bugs
 3. **Prompt quality** — optional, sequential (SDK rate limits)
@@ -58,6 +90,7 @@ Progress reported via `opts.onProgress(phase, done, total)`.
 Typed wrapper around `@github/copilot-sdk`. **Session lifecycle per call** — each function creates its own `CopilotClient` + session, waits for `idle` event, then destroys both. Never reuse sessions.
 
 Key exported functions:
+
 - `analyzeWithLLM(req)` — one-shot request → `LlmResponse`
 - `streamLLM(req, signal?)` — async generator → `StreamChunk` stream (supports `AbortSignal`)
 - `analyzePromptQuality(persona, model, prompt, response)` — returns `{ score, feedback, suggestions }`
@@ -85,6 +118,7 @@ Manages all state and keyboard routing. Two top-level modes:
 | `files` | `runs`, `filetree`, `fileviewer` | `[v]` |
 
 Key state variables:
+
 - `mode`, `focusedPanel` — current view
 - `promptSplitMode` — split prompt/response view (`[p]`)
 - `promptPartsMode` — navigable prompt sections view (`[s]`)
@@ -134,7 +168,7 @@ Ink does not support React refs for scroll/navigation. Scrollable components exp
 
 ## Files Mode — Three View States
 
-```
+```text
 FILES MODE
 ──────────
 
@@ -149,7 +183,7 @@ State 1: Tree only           State 2: Tree + FileViewer     State 3: PARTS / SPL
 
 ## Data Flow Diagram
 
-```
+```text
 .ai_workflow/logs/workflow_*/
   step_XX.jsonl        →  log_parser      → AnyLogEvent[]
   prompts/step_XX/*.md →  prompt_parser   → PromptRecord[]
@@ -178,3 +212,15 @@ State 1: Tree only           State 2: Tree + FileViewer     State 3: PARTS / SPL
 6. **Copilot SDK per-call lifecycle** — create `CopilotClient` + session, use, destroy; never reuse
 7. **`tsx` required** — `@github/copilot-sdk` → `vscode-jsonrpc/node` breaks bare `node` ESM resolution
 8. **Prompt file format** — `**Label**:` or `**Label:**` at line start marks section boundaries; `parsePromptParts()` handles both
+
+---
+
+## Related Documents
+
+- [FUNCTIONAL_REQUIREMENTS.md](FUNCTIONAL_REQUIREMENTS.md) — numbered FRs that this architecture implements
+- [CHANGELOG.md](CHANGELOG.md) — version history and release notes
+- [CONTRIBUTING.md](CONTRIBUTING.md) — documentation standards, versioning rules, terminology glossary
+
+---
+
+*Applies to **v0.2.0**. Update this line whenever the package version is bumped.*

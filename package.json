@@ -29,6 +29,8 @@
     "type:check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:md": "markdownlint '**/*.md' --ignore node_modules",
+    "lint:md:fix": "markdownlint '**/*.md' --ignore node_modules --fix",
     "clean": "rm -rf dist coverage"
   },
   "keywords": [
@@ -77,6 +79,7 @@
     "globals": "^17.4.0",
     "ink-testing-library": "^4.0.0",
     "jest": "^30.3.0",
+    "markdownlint-cli": "^0.48.0",
     "ts-jest": "^29.4.0",
     "tsx": "^4.19.4",
     "typescript": "^5.9.3"
