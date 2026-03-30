@@ -69,6 +69,7 @@ export function analyzePerformance(
             title: `High memory usage in ${e.stepId}: ${e.memoryMb.toFixed(1)}MB`,
             detail: `Memory usage exceeded ${sev === 'critical' ? 'critical' : 'warning'} threshold of ${sev === 'critical' ? thresholds.memoryCriticalMb : thresholds.memoryWarningMb}MB`,
             evidence: e.raw,
+            fixRecommendation: `Profile the step for memory leaks and large in-memory data structures. Consider processing data in smaller chunks or streaming output rather than buffering it entirely.`,
             timestamp: e.timestamp,
           });
         }
@@ -100,6 +101,7 @@ export function analyzePerformance(
         stepId,
         title: `Slow step: ${stepId} (${(durationMs / 1000).toFixed(1)}s)`,
         detail: `Step ${stepId} took ${(durationMs / 1000).toFixed(1)}s, exceeding the ${sev === 'critical' ? 'critical' : 'warning'} threshold of ${((sev === 'critical' ? thresholds.stepDurationCriticalMs : thresholds.stepDurationWarningMs) / 1000).toFixed(0)}s`,
+        fixRecommendation: `Profile the step to identify bottlenecks. Consider parallelizing independent sub-tasks or reducing the number of sequential AI calls. If the duration is expected, raise the relevant threshold in ThresholdConfig.`,
         timestamp: undefined,
       });
     }
@@ -116,6 +118,7 @@ export function analyzePerformance(
         stepId: call.stepId,
         title: `Slow LLM call in ${call.stepId ?? 'unknown'}: ${(call.latencyMs / 1000).toFixed(1)}s (${call.persona})`,
         detail: `LLM call to ${call.model} with persona ${call.persona} took ${(call.latencyMs / 1000).toFixed(1)}s`,
+        fixRecommendation: `Reduce prompt size to lower response time, or switch to a faster model for this persona. Consider caching responses for prompts that are repeated with identical input.`,
         timestamp: call.timestamp,
       });
     }

@@ -12,7 +12,7 @@ function nextId(category: string): string {
 }
 
 const SDK_FAIL_RE = /SDK (error|failed|timeout|unavailable)/i;
-const UNCAUGHT_RE = /(UnhandledPromiseRejection|Error:|TypeError:|RangeError:|uncaught)/;
+const UNCAUGHT_RE = /(UnhandledPromiseRejection|Error:|TypeError:|RangeError:|uncaught)/i;
 const AUTH_FAIL_RE = /(auth|authentication|unauthorized|403|401)/i;
 
 /**
@@ -36,6 +36,7 @@ export function analyzeFailures(events: AnyLogEvent[]): Issue[] {
           title: `Critical timeout: ${perf.stepId}`,
           detail: `Step ${perf.stepId} exceeded critical duration threshold (${(perf.durationMs / 1000).toFixed(1)}s${perf.memoryMb ? `, memory: ${perf.memoryMb.toFixed(1)}MB` : ''})`,
           evidence: perf.raw,
+          fixRecommendation: `Profile the step to find the bottleneck. Optimize slow operations or parallelize independent sub-tasks. If the duration is expected, raise the critical threshold in ThresholdConfig.`,
           timestamp: perf.timestamp,
         });
       }
@@ -53,6 +54,7 @@ export function analyzeFailures(events: AnyLogEvent[]): Issue[] {
         title: `Step failed: ${step.stepId}`,
         detail: msg,
         evidence: event.raw,
+        fixRecommendation: `Review the full error log for this step to identify the root cause. Verify that all step inputs and dependencies are valid and that the step's required resources are available.`,
         timestamp: event.timestamp,
       });
       continue;
@@ -68,6 +70,7 @@ export function analyzeFailures(events: AnyLogEvent[]): Issue[] {
         title: `SDK failure${event.stepId ? ` in ${event.stepId}` : ''}`,
         detail: msg,
         evidence: event.raw,
+        fixRecommendation: `Check network connectivity and SDK configuration. Verify API rate limits and quota usage. Review retry policies and consider adding exponential backoff for transient failures.`,
         timestamp: event.timestamp,
       });
       continue;
@@ -83,6 +86,7 @@ export function analyzeFailures(events: AnyLogEvent[]): Issue[] {
         title: 'Authentication / authorization failure',
         detail: msg,
         evidence: event.raw,
+        fixRecommendation: `Verify that authentication credentials and authorization scopes are correctly configured. Check for token expiry and ensure the token refresh logic is working. Confirm the account has the required permissions.`,
         timestamp: event.timestamp,
       });
       continue;
@@ -100,6 +104,7 @@ export function analyzeFailures(events: AnyLogEvent[]): Issue[] {
           title: `Runtime error${event.stepId ? ` in ${event.stepId}` : ''}`,
           detail: msg,
           evidence: event.raw,
+          fixRecommendation: `Review the stack trace in the log to locate the error source. Fix the underlying code defect or add appropriate error handling to prevent unhandled promise rejections and uncaught exceptions.`,
           timestamp: event.timestamp,
         });
       }

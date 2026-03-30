@@ -116,6 +116,7 @@ export function analyzeDocumentation(events: AnyLogEvent[]): Issue[] {
           title: `Documentation generation produced no output${event.stepId ? ` in ${event.stepId}` : ''}`,
           detail: `Step detected ${gap.missing} missing documentation file(s) but generated 0. The AI response was likely not in the expected structured format.`,
           evidence: event.raw,
+          fixRecommendation: `Update the documentation prompt to explicitly require structured output (e.g., JSON or a delimited format). Add an output format example to the prompt and validate the AI response before processing.`,
           timestamp: event.timestamp,
         });
       }
@@ -134,6 +135,7 @@ export function analyzeDocumentation(events: AnyLogEvent[]): Issue[] {
         title: `AI response parse failure${event.stepId ? ` in ${event.stepId}` : ''}`,
         detail: `The documentation step received a response from the AI but could not parse structured document output from it. The AI likely returned prose instead of the expected format.`,
         evidence: event.raw,
+        fixRecommendation: `Constrain the AI output format by adding a strict schema example to the prompt. Instruct the model to respond only with the required structured format and add a fallback parser for common prose variants.`,
         timestamp: event.timestamp,
       });
       continue;
@@ -149,6 +151,7 @@ export function analyzeDocumentation(events: AnyLogEvent[]): Issue[] {
         title: `Documentation directory not found${event.stepId ? ` in ${event.stepId}` : ''}`,
         detail: event.message,
         evidence: event.raw,
+        fixRecommendation: `Create the expected documentation directory before running the workflow. Check the configured docs path in the workflow settings and ensure it exists and is writable.`,
         timestamp: event.timestamp,
       });
       continue;
@@ -167,6 +170,7 @@ export function analyzeDocumentation(events: AnyLogEvent[]): Issue[] {
           title: `Documentation version inconsistency${event.stepId ? ` in ${event.stepId}` : ''}`,
           detail: `Version check found ${count} inconsistency issue(s) across documentation files.`,
           evidence: event.raw,
+          fixRecommendation: `Synchronise the version string across all documentation files (e.g., README.md, CHANGELOG.md, package.json). Consider using a single source of truth (such as package.json) and a pre-commit hook or CI check to keep them in sync.`,
           timestamp: event.timestamp,
         });
       }

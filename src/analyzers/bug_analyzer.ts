@@ -50,6 +50,7 @@ export function analyzeBugs(events: AnyLogEvent[]): Issue[] {
         title: `Malformed output${event.stepId ? ` in ${event.stepId}` : ''}`,
         detail: event.message,
         evidence: event.raw,
+        fixRecommendation: `Validate the step's output against its expected schema before downstream consumption. Add explicit JSON parsing with try/catch and log the raw response on failure to aid debugging.`,
         timestamp: event.timestamp,
       });
       continue;
@@ -65,6 +66,7 @@ export function analyzeBugs(events: AnyLogEvent[]): Issue[] {
         title: `Unexpected outcome${event.stepId ? ` in ${event.stepId}` : ''}`,
         detail: event.message,
         evidence: event.raw,
+        fixRecommendation: `Review the step's prompt and input data for format mismatches. Add assertion logging around the output value to trace where the unexpected result originates.`,
         timestamp: event.timestamp,
       });
     }
@@ -73,14 +75,18 @@ export function analyzeBugs(events: AnyLogEvent[]): Issue[] {
   // Convert retry data into issues
   for (const [stepId, data] of retryCounts) {
     if (data.count >= 2) {
+      const exhausted = data.count >= data.max;
       issues.push({
         id: nextId(),
         category: 'bug',
-        severity: data.count >= data.max ? 'high' : 'medium',
+        severity: exhausted ? 'high' : 'medium',
         stepId,
         title: `Retries in ${stepId}: attempt ${data.count}/${data.max}`,
         detail: `Step ${stepId} required ${data.count} attempt(s) out of ${data.max} maximum. This may indicate flaky SDK responses or prompt instability.`,
         evidence: data.evidence,
+        fixRecommendation: exhausted
+          ? `All retry attempts were exhausted. Check for persistent SDK or network issues, review API rate limits, and consider whether the prompt reliably produces parseable output.`
+          : `The step required multiple attempts before succeeding. Investigate intermittent SDK response failures and review the prompt for instructions that may produce inconsistent output.`,
         timestamp: data.timestamp,
       });
     }

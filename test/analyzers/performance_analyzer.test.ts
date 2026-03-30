@@ -239,7 +239,7 @@ describe('analyzePerformance', () => {
       {
         kind: 'performance',
         stepId: 'step-13',
-        durationMs: 8000,
+        durationMs: 2000,
         memoryMb: 2000,
         raw: 'Memory usage: 2000MB',
         timestamp: new Date('2024-01-01T07:01:00Z'),
@@ -255,10 +255,10 @@ describe('analyzePerformance', () => {
     ];
     const issues = analyzePerformance(events, DEFAULT_THRESHOLDS);
     expect(issues).toHaveLength(3);
-    expect(issues[0].title).toContain('Slow step: step-12');
-    expect(issues[1].title).toContain('High memory usage in step-13');
+    expect(issues[0].title).toContain('High memory usage in step-13');
+    expect(issues[1].title).toContain('Slow step: step-12');
     expect(issues[2].title).toContain('Slow LLM call in step-14');
-    expect(issues[1].severity).toBe('critical');
+    expect(issues[0].severity).toBe('critical');
     expect(issues[2].severity).toBe('critical');
   });
 });
@@ -285,7 +285,7 @@ describe('buildMetricsSummary', () => {
     expect(summary.slowestSteps).toHaveLength(8);
     expect(summary.slowestSteps[0]).toEqual({ stepId: 'i', durationMs: 9000 });
     expect(summary.slowestSteps[1]).toEqual({ stepId: 'd', durationMs: 8000 });
-    expect(summary.slowestSteps[7]).toEqual({ stepId: 'a', durationMs: 1000 });
+    expect(summary.slowestSteps[7]).toEqual({ stepId: 'e', durationMs: 2000 });
     expect(summary.avgAiLatencyMs).toBe(2500);
     expect(summary.maxMemoryMb).toBe(1024);
     expect(summary.totalAiCalls).toBe(12);
