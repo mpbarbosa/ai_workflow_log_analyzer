@@ -43,6 +43,9 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const { stdout } = useStdout();
   const { setRawMode } = useStdin();
   const cols = stdout?.columns ?? 120;
+  const rows = stdout?.rows ?? 40;
+  // Header (3) + StatusBar (3) = 6 rows of fixed chrome; the rest is the content area.
+  const contentRows = Math.max(10, rows - 6);
 
   const aiWorkflowDir = `${projectRoot}/.ai_workflow`;
 
@@ -333,6 +336,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
                       focused={focusedPanel === 'filetree'}
                       loading={fileTree.loading}
                       openedPath={openedFilePath}
+                      height={contentRows}
                     />
                   )}
                   {partAnalysisPart ? (
@@ -365,6 +369,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
                   loading={fileTree.loading}
                   openedPath={null}
                   fullWidth
+                  height={contentRows}
                 />
               )
             ) : (

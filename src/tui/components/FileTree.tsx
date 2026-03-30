@@ -16,13 +16,25 @@ interface FileTreeProps {
   openedPath: string | null;
   /** When true the tree expands to fill all available width (no file open). */
   fullWidth?: boolean;
+  /** Available terminal rows for this component; used to compute the scroll viewport. */
+  height?: number;
 }
 
 const INDENT = '  ';
 
-export function FileTree({ entries, selectedIndex, focused, loading, openedPath, fullWidth = false }: FileTreeProps) {
+export function FileTree({ entries, selectedIndex, focused, loading, openedPath, fullWidth = false, height = 40 }: FileTreeProps) {
   const borderColor = focused ? 'cyan' : 'gray';
   const title = focused ? '▶ FILES' : '  FILES';
+
+  // border top + title row + border bottom = 3 overhead rows; remainder is the usable viewport
+  const OVERHEAD = 3;
+  const viewportRows = Math.max(3, height - OVERHEAD);
+
+  // Scroll to keep selectedIndex centred in the viewport, clamped to valid range
+  const scrollOffset = entries.length <= viewportRows
+    ? 0
+    : Math.max(0, Math.min(selectedIndex - Math.floor(viewportRows / 2), entries.length - viewportRows));
+  const visibleEntries = entries.slice(scrollOffset, scrollOffset + viewportRows);
 
   return (
     <Box
@@ -50,8 +62,9 @@ export function FileTree({ entries, selectedIndex, focused, loading, openedPath,
         </Box>
       )}
 
-      {!loading && entries.map((entry, i) => {
-        const isSelected = i === selectedIndex;
+      {!loading && visibleEntries.map((entry, i) => {
+        const absoluteIndex = i + scrollOffset;
+        const isSelected = absoluteIndex === selectedIndex;
         const isOpen = entry.filePath === openedPath;
         const indent = INDENT.repeat(entry.depth);
 
