@@ -17,6 +17,8 @@ Different documentation files in this project serve different readers:
 | `ARCHITECTURE.md` | Internal contributors and AI agents — system design, component relationships |
 | `FUNCTIONAL_REQUIREMENTS.md` | Internal contributors and AI agents — feature specifications and constraints |
 | `CONTRIBUTING.md` | Internal contributors and AI agents — standards, conventions, and terminology |
+| `API.md` | Internal contributors and AI agents — programmatic API reference for pipeline, analyzers, reporters, and copilot client |
+| `GETTING_STARTED.md` | Internal contributors — developer onboarding, dev environment setup, and extension guide |
 | `.github/copilot-instructions.md` | AI agents (GitHub Copilot, workflow LLMs) — canonical project context |
 | Inline JSDoc / TSDoc | Any developer using the package — IDE hover docs, AI autocomplete context |
 
@@ -133,9 +135,13 @@ The single source of truth is **`package.json`**. Whenever the version changes, 
 
 Version bumping rules:
 
-- **PATCH** — bug fixes, doc corrections, test additions
+- **PATCH** — bug fixes, doc corrections, test additions, documentation-only updates (e.g. rewording, added examples, clarified behaviour)
 - **MINOR** — new features, new CLI flags, new analyzer/reporter
 - **MAJOR** — breaking changes to the log format contract, CLI interface, or public API
+
+> **Trivial edits** (typo fixes, whitespace, formatting-only changes with no content impact) do **not** require a version bump or a `CHANGELOG.md` entry.
+
+When a documentation change affects system design, component interfaces, or feature specifications, also review and update `ARCHITECTURE.md` and/or `FUNCTIONAL_REQUIREMENTS.md` in the same commit to keep them consistent.
 
 ---
 
@@ -145,9 +151,11 @@ Docs should link to each other as follows:
 
 | From | Links to |
 |------|----------|
-| `README.md` | ARCHITECTURE.md, FUNCTIONAL_REQUIREMENTS.md, CHANGELOG.md, CONTRIBUTING.md |
-| `ARCHITECTURE.md` | FUNCTIONAL_REQUIREMENTS.md, CHANGELOG.md |
+| `README.md` | ARCHITECTURE.md, FUNCTIONAL_REQUIREMENTS.md, CHANGELOG.md, CONTRIBUTING.md, API.md, GETTING_STARTED.md |
+| `ARCHITECTURE.md` | FUNCTIONAL_REQUIREMENTS.md, CHANGELOG.md, CONTRIBUTING.md, API.md, GETTING_STARTED.md |
 | `FUNCTIONAL_REQUIREMENTS.md` | ARCHITECTURE.md, CHANGELOG.md |
+| `API.md` | ARCHITECTURE.md, CONTRIBUTING.md |
+| `GETTING_STARTED.md` | ARCHITECTURE.md, API.md, CONTRIBUTING.md |
 | `CHANGELOG.md` | No outbound doc links required |
 | `CONTRIBUTING.md` | No outbound doc links required |
 
