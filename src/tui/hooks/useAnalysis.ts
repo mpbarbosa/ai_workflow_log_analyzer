@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { runAnalysisPipeline } from '../../lib/pipeline.js';
 import type { AnalysisReport, RunInfo, ThresholdConfig, IssueFilter } from '../../types/index.js';
 
+/** Lifecycle state of the analysis pipeline as managed by {@link useAnalysis}. */
 export type AnalysisState = 'idle' | 'running' | 'done' | 'error';
 
 export interface AnalysisProgress {
@@ -16,6 +17,11 @@ export interface AnalysisProgress {
   total: number;
 }
 
+/**
+ * Wraps {@link runAnalysisPipeline} with React state for the TUI.
+ * Exposes filtered issues, cycle-filter helper, and per-phase progress.
+ * @param thresholds - Optional threshold overrides; defaults to {@link DEFAULT_THRESHOLDS}
+ */
 export function useAnalysis(thresholds?: ThresholdConfig) {
   const [state, setState] = useState<AnalysisState>('idle');
   const [report, setReport] = useState<AnalysisReport | null>(null);
@@ -49,7 +55,7 @@ export function useAnalysis(thresholds?: ThresholdConfig) {
     : [];
 
   const cycleFilter = useCallback(() => {
-    const order: IssueFilter[] = ['all', 'failure', 'performance', 'bug', 'prompt_quality'];
+    const order: IssueFilter[] = ['all', 'failure', 'performance', 'bug', 'documentation', 'prompt_quality'];
     setFilter((prev) => {
       const idx = order.indexOf(prev);
       return order[(idx + 1) % order.length];

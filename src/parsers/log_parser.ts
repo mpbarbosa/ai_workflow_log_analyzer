@@ -52,6 +52,12 @@ function extractStepId(message: string): string | undefined {
 
 // ─── Line parser ─────────────────────────────────────────────────────────────
 
+/**
+ * Parses a single raw log line into a typed event object.
+ * Returns `null` for lines that do not match any known event format.
+ * @param raw - Raw log line string
+ * @param contextStepId - Step ID inherited from the surrounding file context
+ */
 export function parseLine(
   raw: string,
   contextStepId?: string
@@ -186,6 +192,7 @@ export async function* streamLogFile(
 
 // ─── Run-level parser ─────────────────────────────────────────────────────────
 
+/** Union of all structured log event types produced by {@link parseLine}. */
 export type AnyLogEvent = LogEvent | AiCallEvent | StepEvent | PerformanceEvent | RetryEvent;
 
 /**
@@ -227,4 +234,26 @@ export async function parseRunLogsToArray(runDir: string): Promise<AnyLogEvent[]
     events.push(event);
   }
   return events;
+}
+
+// ─── Run metadata ─────────────────────────────────────────────────────────────
+
+interface RunMetadataFile {
+  projectRoot?: string;
+  runId?: string;
+  timestamp?: string;
+}
+
+/**
+ * Reads run_metadata.json from the run directory.
+ * Returns an empty object if the file is absent or malformed (backward compat).
+ */
+export async function parseRunMetadata(runDir: string): Promise<RunMetadataFile> {
+  const { readFile } = await import('node:fs/promises');
+  try {
+    const raw = await readFile(join(runDir, 'run_metadata.json'), 'utf8');
+    return JSON.parse(raw) as RunMetadataFile;
+  } catch {
+    return {};
+  }
 }

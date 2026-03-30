@@ -92,6 +92,12 @@ async function buildTree(runDir: string, analysisDir: string | null): Promise<Fi
   return result;
 }
 
+/**
+ * Builds and manages the file-tree for a workflow run directory.
+ * Handles lazy directory expansion and tracks the selected entry.
+ * @param runDir - Absolute path to the workflow run directory, or `null` when no run is selected
+ * @param analysisDir - Optional path to an analysis output directory to append as a tree node
+ */
 export function useFileTree(runDir: string | null, analysisDir: string | null = null) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);

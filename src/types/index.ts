@@ -5,8 +5,13 @@
 
 // ─── Log Events ──────────────────────────────────────────────────────────────
 
+/** Severity level of a log entry, ordered from least to most severe. */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
+/**
+ * Base log event emitted by the workflow runner.
+ * All other event types extend this interface.
+ */
 export interface LogEvent {
   timestamp: Date;
   level: LogLevel;
@@ -15,6 +20,7 @@ export interface LogEvent {
   raw: string;
 }
 
+/** Log event emitted at the start or completion of an LLM (AI) call. */
 export interface AiCallEvent extends LogEvent {
   kind: 'ai_call_start' | 'ai_call_complete';
   persona: string;
@@ -24,6 +30,7 @@ export interface AiCallEvent extends LogEvent {
   latencyMs?: number;
 }
 
+/** Log event emitted when a workflow step starts, completes, warns, or errors. */
 export interface StepEvent extends LogEvent {
   kind: 'step_start' | 'step_complete' | 'step_warning' | 'step_error';
   stepId: string;
@@ -31,6 +38,7 @@ export interface StepEvent extends LogEvent {
   issueCount?: number;
 }
 
+/** Log event carrying performance measurements for a workflow step. */
 export interface PerformanceEvent extends LogEvent {
   kind: 'performance';
   stepId: string;
@@ -39,6 +47,7 @@ export interface PerformanceEvent extends LogEvent {
   isCritical: boolean;
 }
 
+/** Log event emitted when a step is retried after a failure. */
 export interface RetryEvent extends LogEvent {
   kind: 'retry';
   stepId: string;
@@ -64,6 +73,7 @@ export interface PromptRecord {
 
 // ─── Metrics ─────────────────────────────────────────────────────────────────
 
+/** Aggregated performance and outcome metrics for a single workflow step. */
 export interface StepMetrics {
   stepId: string;
   durationMs: number;
@@ -75,6 +85,7 @@ export interface StepMetrics {
   issueCount: number;
 }
 
+/** Aggregated metrics for a complete workflow run, derived from log events and metrics files. */
 export interface RunMetrics {
   runId: string;
   startTime: Date;
@@ -89,6 +100,7 @@ export interface RunMetrics {
   version?: string;
 }
 
+/** Container for parsed metrics: the current run and historical run data. */
 export interface MetricsData {
   currentRun?: RunMetrics;
   history: RunMetrics[];
@@ -96,7 +108,9 @@ export interface MetricsData {
 
 // ─── Issues ───────────────────────────────────────────────────────────────────
 
-export type IssueCategory = 'failure' | 'performance' | 'bug' | 'prompt_quality';
+/** Classifier for the type of problem an {@link Issue} represents. */
+export type IssueCategory = 'failure' | 'performance' | 'bug' | 'prompt_quality' | 'documentation';
+/** Priority level of an {@link Issue}, used for sorting and filtering. */
 export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low';
 
 export interface Issue {
@@ -108,6 +122,17 @@ export interface Issue {
   detail: string;
   /** Raw log excerpt or prompt text that triggered this issue */
   evidence?: string;
+  /**
+   * Root cause of the issue — populated for documentation issues where the
+   * automated scanner can determine why a reference or resource is missing
+   * (e.g. renamed file, moved location, typo in reference, never existed).
+   */
+  rootCause?: string;
+  /**
+   * Specific recommended fix with before/after example where applicable.
+   * Populated alongside {@link rootCause} for actionable documentation issues.
+   */
+  fixRecommendation?: string;
   /** LLM-generated analysis (populated by prompt_quality_analyzer or on-demand) */
   llmAnalysis?: string;
   timestamp?: Date;
@@ -115,6 +140,7 @@ export interface Issue {
 
 // ─── Prompt Quality ───────────────────────────────────────────────────────────
 
+/** Result of LLM-assisted quality analysis for a single prompt/response pair. */
 export interface PromptQualityResult {
   promptRecord: PromptRecord;
   score: number;  // 0–100
@@ -128,6 +154,8 @@ export interface PromptQualityResult {
 export interface AnalysisReport {
   runId: string;
   analyzedAt: Date;
+  /** Absolute path to the project that produced the logs (from run_metadata.json; may be undefined for legacy runs) */
+  projectRoot?: string;
   metrics: RunMetrics;
   issues: Issue[];
   promptQuality: PromptQualityResult[];
@@ -138,6 +166,7 @@ export interface AnalysisReport {
     failures: number;
     performance: number;
     bugs: number;
+    documentation: number;
     promptQuality: number;
     critical: number;
   };
@@ -162,6 +191,7 @@ export interface ThresholdConfig {
   promptQualityMinScore: number;
 }
 
+/** Default threshold values applied when no user configuration is provided. */
 export const DEFAULT_THRESHOLDS: ThresholdConfig = {
   stepDurationWarningMs: 30_000,
   stepDurationCriticalMs: 60_000,
@@ -174,9 +204,12 @@ export const DEFAULT_THRESHOLDS: ThresholdConfig = {
 
 // ─── TUI / App state ─────────────────────────────────────────────────────────
 
+/** Identifier for a focusable panel in the TUI layout. */
 export type PanelId = 'runs' | 'issues' | 'metrics' | 'detail' | 'filetree' | 'fileviewer';
+/** Active filter for the issues list; `'all'` disables category filtering. */
 export type IssueFilter = 'all' | IssueCategory;
 
+/** Metadata for a discovered workflow run directory, used by the run selector. */
 export interface RunInfo {
   runId: string;
   path: string;

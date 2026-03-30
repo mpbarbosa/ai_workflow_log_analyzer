@@ -136,6 +136,14 @@ Respond in this exact JSON format:
   "suggestions": ["<actionable suggestion>", ...]
 }`;
 
+/**
+ * Scores the quality of a single prompt/response pair using an LLM judge.
+ * @param persona - Persona name associated with the prompt
+ * @param model - Model ID used for the AI call
+ * @param prompt - The prompt text sent to the model
+ * @param response - The model's response text
+ * @returns Score (0–100), feedback sentence, and actionable suggestions
+ */
 export async function analyzePromptQuality(
   persona: string,
   model: string,
@@ -183,6 +191,11 @@ findings, issue counts, or recommendations not present in the data. If the data 
 no critical issues, do not fabricate urgency. When in doubt, silence is preferable to
 speculation.`;
 
+/**
+ * Produces a concise executive summary of an analysis report using an LLM.
+ * @param reportJson - JSON-serialised {@link AnalysisReport}
+ * @returns 3–5 sentence plain-text summary focusing on critical issues
+ */
 export async function summarizeReport(reportJson: string): Promise<string> {
   const result = await analyzeWithLLM({
     prompt: reportJson.slice(0, 4000),

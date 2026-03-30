@@ -47,6 +47,12 @@ async function discoverRuns(aiWorkflowDir: string): Promise<RunInfo[]> {
   return runs.sort((a, b) => (b.startTime?.getTime() ?? 0) - (a.startTime?.getTime() ?? 0));
 }
 
+/**
+ * Discovers workflow run directories under `<aiWorkflowDir>/logs/` and
+ * manages the selected run index for the TUI run-selector panel.
+ * @param aiWorkflowDir - Absolute path to the project's `.ai_workflow/` directory
+ * @returns Sorted run list, selection state, and navigation helpers
+ */
 export function useRunSelector(aiWorkflowDir: string) {
   const [runs, setRuns] = useState<RunInfo[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);

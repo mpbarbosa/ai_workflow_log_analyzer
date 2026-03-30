@@ -4,19 +4,26 @@
  */
 
 import { join } from 'node:path';
-import { parseRunLogsToArray } from '../parsers/log_parser.js';
+import { parseRunLogsToArray, parseRunMetadata } from '../parsers/log_parser.js';
 import { parseRunPrompts } from '../parsers/prompt_parser.js';
 import { parseMetrics } from '../parsers/metrics_parser.js';
 import { analyzeFailures } from '../analyzers/failure_analyzer.js';
 import { analyzePerformance } from '../analyzers/performance_analyzer.js';
 import { analyzeBugs } from '../analyzers/bug_analyzer.js';
+import { analyzeDocumentation } from '../analyzers/doc_analyzer.js';
 import { analyzeAllPrompts } from '../analyzers/prompt_quality_analyzer.js';
 import { summarizeReport } from './copilot_client.js';
 import type { AnalysisReport, Issue, RunMetrics, ThresholdConfig } from '../types/index.js';
 import { DEFAULT_THRESHOLDS } from '../types/index.js';
 
+/**
+ * Options for {@link runAnalysisPipeline}.
+ * All fields are optional; omitted fields fall back to safe defaults.
+ */
 export interface PipelineOptions {
   thresholds?: ThresholdConfig;
+  /** Explicit project root; overrides value found in run_metadata.json */
+  projectRoot?: string;
   /** Skip LLM-assisted prompt quality analysis (faster, offline) */
   skipPromptQuality?: boolean;
   /** Skip final LLM executive summary */
@@ -38,18 +45,22 @@ export async function runAnalysisPipeline(
   const runId = runDir.split('/').pop() ?? 'unknown';
 
   opts.onProgress?.('Parsing logs', 0, 3);
-  const [events, prompts, metricsData] = await Promise.all([
+  const [events, prompts, metricsData, runMeta] = await Promise.all([
     parseRunLogsToArray(runDir),
     parseRunPrompts(runDir),
     parseMetrics(metricsDir),
+    parseRunMetadata(runDir),
   ]);
   opts.onProgress?.('Parsing logs', 3, 3);
 
-  opts.onProgress?.('Analyzing', 0, 3);
+  const projectRoot = opts.projectRoot ?? runMeta.projectRoot;
+
+  opts.onProgress?.('Analyzing', 0, 4);
   const failures = analyzeFailures(events);
   const perfIssues = analyzePerformance(events, thresholds);
   const bugs = analyzeBugs(events);
-  opts.onProgress?.('Analyzing', 3, 3);
+  const docIssues = analyzeDocumentation(events);
+  opts.onProgress?.('Analyzing', 4, 4);
 
   // Build run metrics from parsed data or metrics file
   const metrics: RunMetrics = metricsData.currentRun ?? {
@@ -70,13 +81,14 @@ export async function runAnalysisPipeline(
   }
 
   const promptQualityIssues = promptQuality.flatMap((r) => (r.issue ? [r.issue] : []));
-  const allIssues: Issue[] = [...failures, ...perfIssues, ...bugs, ...promptQualityIssues];
+  const allIssues: Issue[] = [...failures, ...perfIssues, ...bugs, ...docIssues, ...promptQualityIssues];
 
   const counts = {
     total: allIssues.length,
     failures: failures.length,
     performance: perfIssues.length,
     bugs: bugs.length,
+    documentation: docIssues.length,
     promptQuality: promptQualityIssues.length,
     critical: allIssues.filter((i) => i.severity === 'critical').length,
   };
@@ -84,6 +96,7 @@ export async function runAnalysisPipeline(
   const report: AnalysisReport = {
     runId,
     analyzedAt: new Date(),
+    projectRoot,
     metrics,
     issues: allIssues,
     promptQuality,

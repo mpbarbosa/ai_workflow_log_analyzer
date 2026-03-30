@@ -93,6 +93,9 @@ export function parsePromptFileContent(content: string): ParsedPromptFile | null
 
 /**
  * Loads and parses a single prompt log file into a PromptRecord.
+ * @param filePath - Absolute path to the prompt `.md` file
+ * @param stepId - Step ID to associate with the parsed record
+ * @returns Parsed {@link PromptRecord}, or `null` if the file is unreadable or unrecognised
  */
 export async function parsePromptFile(
   filePath: string,
