@@ -1,4 +1,4 @@
-import { parsePromptFileContent, parseRunPrompts } from '../../src/parsers/prompt_parser.js';
+import { parsePromptFileContent, parseRunPrompts, parsePromptParts } from '../../src/parsers/prompt_parser.js';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
@@ -41,6 +41,55 @@ This is the response text.
 
   it('returns null for malformed content', () => {
     expect(parsePromptFileContent('no metadata here')).toBeNull();
+  });
+
+  it('correctly extracts prompt when embedded file content contains ## headings', () => {
+    // Regression: the ## Prompt section regex previously stopped at the first \n##
+    // encountered inside the code fence (e.g. ## [0.2.0] in an embedded CHANGELOG).
+    // This left the opening ``` fence as the sole extracted content, causing
+    // parsePromptParts to emit a spurious one-line Preamble with value "```".
+    const withNestedHeadings = `# Prompt Log
+
+**Timestamp:** 2026-03-30T14:52:52.917Z
+**Persona:** documentation_expert
+**Model:** gpt-4.1
+
+## Prompt
+
+\`\`\`
+**Role**: You are a senior technical documentation specialist.
+
+**Task**: Update the changelog.
+
+**File Contents**:
+### \`CHANGELOG.md\`
+\`\`\`md
+# Changelog
+
+## [0.2.0] - 2026-03-27
+### Added
+- New feature
+\`\`\`
+\`\`\`
+
+## Response
+
+\`\`\`
+No changes needed.
+\`\`\`
+`;
+
+    const result = parsePromptFileContent(withNestedHeadings);
+    expect(result).not.toBeNull();
+
+    // Prompt must not start with a backtick fence
+    expect(result!.prompt).not.toMatch(/^```/);
+    expect(result!.prompt).toMatch(/^\*\*Role\*\*/);
+
+    // parsePromptParts must not produce a Preamble containing only a fence character
+    const parts = parsePromptParts(result!.prompt);
+    const preamble = parts.find((p) => p.label === 'Preamble');
+    expect(preamble).toBeUndefined();
   });
 });
 

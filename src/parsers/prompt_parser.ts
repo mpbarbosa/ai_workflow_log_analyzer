@@ -65,8 +65,14 @@ export function parsePromptFileContent(content: string): ParsedPromptFile | null
   const model = modelMatch[1];
   const timestamp = tsMatch ? new Date(tsMatch[1]) : new Date(0);
 
-  // Extract prompt block — between ## Prompt and ## Response (or end)
-  const promptSectionMatch = content.match(/## Prompt\s*\n([\s\S]*?)(?=\n## Response|\n## |$)/);
+  // Extract prompt block — between ## Prompt and ## Response (or end of file).
+  // The prompt content is wrapped in a ``` fence and may itself contain embedded file
+  // contents with ## headings (e.g. ## [0.2.0] in a CHANGELOG). The |\n## fallback
+  // was removed because it caused premature truncation at those inner headings, which
+  // left the opening fence as the only extracted content and produced a spurious Preamble
+  // section in parsePromptParts. Stopping only at \n## Response is safe because the
+  // prompt log format always places ## Response immediately after the ## Prompt block.
+  const promptSectionMatch = content.match(/## Prompt\s*\n([\s\S]*?)(?=\n## Response|$)/);
   const responseSectionMatch = content.match(/## Response\s*\n([\s\S]*?)(?=\n## |$)/);
 
   const extractCodeBlock = (section: string): string => {
