@@ -97,3 +97,32 @@ step_overrides:
         # provided filenames list.  Silence is correct when content has not been shown.
         block_version_speculation: true
         block_feature_doc_speculation: true
+  step_0b:                    # documentation generation (technical_writer)
+    necessity_criteria:
+      # This is a developer-facing tool with NO external end-users.
+      # All prose docs (ARCHITECTURE, FUNCTIONAL_REQUIREMENTS, CONTRIBUTING) target
+      # internal contributors and AI agents — see CONTRIBUTING.md §Documentation Audience.
+      # Before generating anything, the persona MUST consult the audience table in
+      # CONTRIBUTING.md and confirm the new content serves a defined internal purpose.
+      audience: "internal contributors and AI agents only — never end-users"
+      audience_table_check_required: true
+      # Concrete triggers that make new documentation NECESSARY for this project.
+      # At least one must be true before generating; silence is correct otherwise.
+      generate_triggers:
+        - missing_module_header: >
+            A src/ file is missing its opening JSDoc block with @module path
+            (required by CONTRIBUTING.md §Code Documentation Standards — highest-priority gap).
+        - missing_exported_jsdoc: >
+            An exported function, class, or interface has no JSDoc block at all
+            (not merely a style concern — breaks IDE hover docs and AI autocomplete).
+        - contradicts_contributing: >
+            Existing doc content is factually wrong or directly contradicts a rule
+            stated in CONTRIBUTING.md (e.g., wrong audience targeting, incorrect
+            terminology vs. Glossary, wrong import extension guidance).
+        - wrong_audience_targeting: >
+            An existing doc is written for end-users rather than internal contributors
+            (e.g., installation-focused language in a file that should describe internals).
+      # Prose doc files (ARCHITECTURE, FUNCTIONAL_REQUIREMENTS, CONTRIBUTING) must NOT
+      # be generated or updated unless a trigger above is met AND the change has been
+      # verified against CONTRIBUTING.md.  "Looks incomplete" is not sufficient.
+      block_speculative_prose: true
