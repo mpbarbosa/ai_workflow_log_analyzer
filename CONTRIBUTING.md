@@ -112,11 +112,23 @@ The analyzer surfaces three canonical categories of bugs. All generated output �
 
 ### Output authoring rules
 
+All generated output targets **internal contributors and AI agents** (see [Documentation Audience](#documentation-audience)).
+There are no external end-users — do not write end-user or product-facing prose.
+
 - Write for a developer debugging a failed workflow run — assume familiarity with the codebase.
 - `fixRecommendation` must name the concrete action (e.g. "Add try/catch around JSON.parse"), not
   generic advice.
 - Do not include end-user or product-facing language. See [Code Documentation Standards](#code-documentation-standards)
   for the JSDoc module-header convention all source files must follow.
+
+**Example — well-formed issue object:**
+```json
+{
+  "title": "JSON.parse called without try/catch in metrics_parser.ts",
+  "detail": "parseMetrics() at src/parsers/metrics_parser.ts:42 calls JSON.parse on raw file content with no error handling. A malformed metrics file will throw an uncaught SyntaxError and crash the pipeline.",
+  "fixRecommendation": "Wrap the JSON.parse call in a try/catch and return a safe default (e.g. { history: [] }) on failure, consistent with how log_parser.ts handles parse errors at line 87."
+}
+```
 
 ---
 

@@ -4,7 +4,7 @@ project:
   name: "ai_workflow_log_analyzer"
   type: "typescript-tool"
   kind: "log_analysis_tui"  # domain: interactive TUI for ai_workflow.js log analysis
-  version: "0.2.1"          # keep in sync with package.json
+  version: "0.2.2"          # keep in sync with package.json
   description: "Developer-facing interactive TUI tool for internal contributors to analyze ai_workflow.js execution logs — surfaces failures, bugs, prompt quality issues, and performance regressions using the GitHub Copilot SDK"
 
 tech_stack:

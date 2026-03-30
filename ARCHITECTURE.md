@@ -215,12 +215,92 @@ State 1: Tree only           State 2: Tree + FileViewer     State 3: PARTS / SPL
 
 ---
 
+## Testing Strategy
+
+Tests live in `test/` and mirror the `src/` layout. `tsconfig.json` excludes `test/` from compilation;
+tests are executed directly by `ts-jest` (ESM preset) via `jest.config.mjs`.
+
+### Layout
+
+```text
+test/
+├── fixtures/sample_run/        ← minimal fixture logs used by integration tests
+│   ├── run_metadata.json
+│   ├── workflow.log
+│   ├── steps/
+│   └── prompts/
+├── analyzers/                  ← one test file per analyzer
+├── parsers/                    ← one test file per parser
+├── reporters/                  ← reporter serialisation tests
+├── lib/                        ← pipeline and copilot_client tests
+└── index.test.ts               ← smoke test for the CLI entry point
+```
+
+### Running tests
+
+```bash
+npm test                                          # all tests
+npm test -- --testPathPattern=analyzers           # single folder
+npm test -- --testNamePattern="analyzes failures" # single test by name
+```
+
+### Writing tests
+
+- Import from `../../src/module.js` (`.js` extension required even in test files)
+- Use `import.meta.url` + `fileURLToPath` instead of `__dirname` for fixture paths:
+  ```typescript
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const FIXTURE_DIR = join(__dirname, '../fixtures/sample_run');
+  ```
+- In ESM mode, use `jest.unstable_mockModule()` + a dynamic `await import()` instead of `jest.mock()`.
+  Import `jest` from `@jest/globals`, not the global.
+- Analyzer tests should cover the zero-issue case (clean events) and at least one issue-producing case.
+- Parser tests should use `test/fixtures/sample_run/` rather than synthetic strings where possible.
+
+---
+
+## Error Handling Patterns
+
+### Parser errors — tolerated locally
+
+Each parser (`log_parser`, `prompt_parser`, `metrics_parser`) handles malformed input
+by skipping bad lines/files rather than throwing. A missing `run_metadata.json` returns
+`{ projectRoot: undefined }` (backward compat with pre-0.3.0 logs). Parsers never crash
+the pipeline.
+
+### Pipeline errors — surfaced as rejection
+
+`runAnalysisPipeline()` does not catch errors internally. If a parser throws an unexpected
+error (e.g. filesystem permission denied) or an LLM call rejects, the returned `Promise`
+rejects. Callers must handle this.
+
+### TUI error state — `useAnalysis` state machine
+
+The `useAnalysis` hook wraps `runAnalysisPipeline()` in a try/catch and maps outcomes to
+`state: 'error'`. The caught error message is stored in the `error` field and displayed by
+`App.tsx` in a full-screen error panel. The user can press `r` to retry.
+
+```
+idle ──run()──► running ──success──► done
+                        └──catch───► error ──run()──► running
+```
+
+### LLM errors — skipped with partial results
+
+`analyzeAllPrompts()` uses `Promise.all`, so a single LLM failure rejects the whole batch.
+The pipeline catches this at the prompt-quality phase and continues with `promptQuality: []`
+rather than failing the entire report. The same applies to `summarizeReport()`.
+
+---
+
 ## Related Documents
 
 - [FUNCTIONAL_REQUIREMENTS.md](FUNCTIONAL_REQUIREMENTS.md) — numbered FRs that this architecture implements
 - [CHANGELOG.md](CHANGELOG.md) — version history and release notes
 - [CONTRIBUTING.md](CONTRIBUTING.md) — documentation standards, versioning rules, terminology glossary
+- [API.md](API.md) — programmatic API reference for pipeline, analyzers, reporters, and copilot client
+- [GETTING_STARTED.md](GETTING_STARTED.md) — contributor onboarding and extension guide
 
 ---
 
-*Applies to **v0.2.1**. Update this line whenever the package version is bumped.*
+*Applies to **v0.2.2**. Update this line whenever the package version is bumped.*

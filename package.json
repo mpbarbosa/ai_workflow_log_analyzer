@@ -1,7 +1,7 @@
 {
   "name": "ai-workflow-log-analyzer",
-  "version": "0.2.1",
-  "description": "Interactive TUI tool to analyze ai_workflow.js execution logs — surfaces failures, bugs, prompt quality issues, and performance regressions using the GitHub Copilot SDK",
+  "version": "0.2.2",
+  "description": "Developer-facing interactive TUI tool for internal contributors to analyze ai_workflow.js execution logs — surfaces failures, bugs, prompt quality issues, and performance regressions using the GitHub Copilot SDK",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/types/index.d.ts",

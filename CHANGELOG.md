@@ -6,6 +6,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.2] — 2026-03-30
+
+### Changed
+
+- `CONTRIBUTING.md` § Output authoring rules: added explicit cross-reference to § Documentation
+  Audience and a concrete example JSON issue object (`title`, `detail`, `fixRecommendation`) to
+  clarify the expected output style for AI agents and contributors.
+
+---
+
 ## [0.2.1] — 2026-03-29
 
 ### Added
