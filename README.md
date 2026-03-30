@@ -2,6 +2,15 @@
 
 A standalone CLI tool that analyzes [ai_workflow.js](https://github.com/your-org/ai_workflow.js) execution log files, surfacing failures, bugs, prompt quality issues, and performance regressions — powered by the GitHub Copilot SDK.
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Codebase structure, pipeline design, TUI layout, and key conventions |
+| [FUNCTIONAL_REQUIREMENTS.md](FUNCTIONAL_REQUIREMENTS.md) | Numbered functional requirements (FR-1.x – FR-5.x) |
+| [CHANGELOG.md](CHANGELOG.md) | Version history and release notes |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Documentation standards, versioning rules, terminology glossary |
+
 ## Features
 
 - **Failure detection** — CRITICAL events, SDK timeouts, uncaught exceptions
@@ -375,6 +384,10 @@ src/
 | Log streaming | **readline + async generators** | Memory-safe for large workflow runs |
 | CLI | **commander** | Lightweight, well-typed |
 | Tests | **Jest (ESM)** | Consistent with ai_workflow.js patterns |
+
+## Skills
+
+The `.github/skills/` directory contains [GitHub Copilot CLI skills](https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/about-assigning-tasks-to-copilot) for project-specific workflows. See [`.github/SKILLS.md`](.github/SKILLS.md) for the full list.
 
 ## License
 
