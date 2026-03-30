@@ -1,10 +1,12 @@
 {
   "version": 1,
-  "partitionIndex": 0,
-  "totalPartitions": 1,
-  "filesHash": "348288a0",
+  "partitionIndex": 1,
+  "totalPartitions": 3,
+  "filesHash": "8e2e4585",
   "partitionLabels": [
-    "test/analyzers, test/parsers"
+    "test/analyzers",
+    "test/analyzers (2)",
+    "test/bin, test/parsers"
   ],
-  "updatedAt": "2026-03-29T23:48:06.633Z"
+  "updatedAt": "2026-03-30T14:58:57.254Z"
 }
