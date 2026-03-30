@@ -31,9 +31,25 @@ You will be given:
 2. SECTION CONTENT — the raw text of that section
 3. CODEBASE CONTEXT — relevant source files from the project
 
+**Section-type analysis rules — apply before evaluating:**
+
+- If SECTION LABEL is "Role" or "Persona":
+  The section defines WHO performs the task. Evaluate whether the persona is
+  appropriate for the TASK described within that same section (e.g. a documentation
+  specialist assigned to review markdown files is correct, even if the project's
+  TypeScript source contains no documentation logic). Do NOT penalise a role for
+  not matching the source code implementation. Only flag the role if it contradicts
+  the stated task or claims skills irrelevant to that task.
+
+- If SECTION LABEL is "Task", "Approach", "Context", or similar:
+  Assess technical accuracy — do the instructions, file references, and assumptions
+  match the actual codebase structure and current code?
+
+- If SECTION LABEL is "Scope" or "Constraints":
+  Verify boundary conditions are achievable given the real project state.
+
 Your task:
-- Assess whether the section's claims, instructions, and context accurately
-  reflect the real codebase
+- Apply the appropriate section-type rule above
 - Identify any gaps, outdated references, incorrect assumptions, or missing context
 - Rate the alignment on a scale of 1–10 (10 = perfectly aligned)
 - Provide specific, actionable suggestions for improving this prompt section
