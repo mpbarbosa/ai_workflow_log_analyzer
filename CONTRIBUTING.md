@@ -95,6 +95,29 @@ const retryCounts = new Map<…>();
 
 ---
 
+## Actionable Output Standards
+
+The analyzer surfaces three canonical categories of bugs. All generated output — issue `title`,
+`detail`, and `fixRecommendation` — must target **internal contributors**, not end-users.
+
+### Bug-detection trigger categories
+
+| Category | Trigger condition | Severity |
+|----------|------------------|----------|
+| Retry patterns | `kind === 'retry'` events with `count >= 2` for the same `stepId` | `high` if retries exhausted; `medium` if eventual success |
+| Unexpected outcomes | Log message matches `/(unexpected (result\|outcome\|response)\|mismatch\|assertion failed)/i` | `medium` |
+| Malformed output | Log message matches `/(malformed\|invalid json\|parse error\|unexpected token\|syntax error\|failed to parse)/i` | `high` |
+
+### Output authoring rules
+
+- Write for a developer debugging a failed workflow run — assume familiarity with the codebase.
+- `fixRecommendation` must name the concrete action (e.g. "Add try/catch around JSON.parse"), not
+  generic advice.
+- Do not include end-user or product-facing language. See [Code Documentation Standards](#code-documentation-standards)
+  for the JSDoc module-header convention all source files must follow.
+
+---
+
 ## Version Number Accuracy
 
 This project uses **semantic versioning** (`MAJOR.MINOR.PATCH`).
