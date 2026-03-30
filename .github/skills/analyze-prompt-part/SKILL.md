@@ -6,6 +6,12 @@ description: >
   instructions, context, or constraints are aligned with the real codebase
   state. Use this skill when the user presses [a] in the Prompt Parts viewer,
   or when asked to evaluate a specific prompt section against the codebase.
+parameters:
+  project_root:
+    description: >
+      Root directory of the project to operate on.
+      Defaults to the current GitHub Copilot CLI working directory.
+    default: $PWD
 ---
 
 ## Purpose
@@ -99,7 +105,7 @@ One-paragraph assessment of how well this section aligns with the codebase.
 
 The analysis is a structured markdown document saved to:
 ```
-<projectRoot>/.ai_workflow/analysis/<runId>/part_<label>_<timestamp>.md
+$project_root/.ai_workflow/analysis/<runId>/part_<label>_<timestamp>.md
 ```
 
 The output contains:
