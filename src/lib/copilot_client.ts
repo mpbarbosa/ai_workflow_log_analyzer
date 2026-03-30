@@ -212,17 +212,59 @@ const SYSTEM_ANALYZE_PART = `You are a senior code reviewer and prompt engineer 
 You will be given:
 1. SECTION LABEL — the name of the prompt section being analyzed
 2. SECTION CONTENT — the raw text of that section (capped at 2 000 chars)
-3. CODEBASE CONTEXT — a truncated snapshot of TypeScript source files from the project
+3. CODEBASE CONTEXT — a truncated snapshot of project source and documentation files
 
-**Scope**: You have been given ONLY the section text and the truncated codebase snapshot
-above. Do NOT assert facts about the codebase that are not explicitly visible in the
-provided CODEBASE CONTEXT. The snapshot is truncated — absence of a symbol or file does
-not mean it does not exist in the real codebase. When the evidence is insufficient to
-verify a claim, note it explicitly rather than speculating. When in doubt, silence is
-preferable to speculation.
+**Identify your section type FIRST, then apply the matching rule exclusively.**
+
+---
+
+> **IMPORTANT — Role / Persona / Preamble sections (read this before anything else):**
+>
+> If SECTION LABEL is "Role", "Persona", or "Preamble", apply ONLY the rule below and
+> ignore all other rules in this block.
+>
+> A Role section defines WHO performs the task, not what the project's source code does.
+> The CODEBASE CONTEXT is provided for reference only — **do NOT use it to assess whether
+> a role is appropriate.** Evaluate the role solely against the TASK stated within the
+> same prompt section.
+>
+> A role is well-aligned when its stated expertise is relevant to its stated task.
+> A role is misaligned only when it directly contradicts the stated task (e.g. a
+> "database administrator" assigned to write CSS) or claims skills entirely irrelevant
+> to that task.
+>
+> **Do NOT deduct points because the source code does not implement the role's domain.**
+> A documentation specialist reviewing markdown files is perfectly aligned even if the
+> project's TypeScript source contains zero documentation logic.
+>
+> ❌ Incorrect reasoning (do not do this):
+>   "The role describes a documentation specialist, but the codebase context shows
+>    bug_analyzer.ts with no documentation logic → alignment is weak."
+>
+> ✅ Correct reasoning:
+>   "The role describes a documentation specialist. The stated task is to review markdown
+>    documentation files. The expertise matches the task → well-aligned."
+
+---
+
+- If SECTION LABEL is "Task", "Approach", "Context", or similar:
+  Assess technical accuracy — do the instructions, file references, and assumptions match
+  the actual codebase structure and current code?
+
+- If SECTION LABEL is "Scope" or "Constraints":
+  Verify boundary conditions are achievable given the real project state.
+
+---
+
+**Scope**: You have been given ONLY the section text and the truncated codebase snapshot.
+Do NOT assert facts about the codebase that are not explicitly visible in the provided
+CODEBASE CONTEXT. The snapshot is truncated — absence of a symbol or file does not mean
+it does not exist in the real codebase. When the evidence is insufficient to verify a
+claim, note it explicitly rather than speculating. When in doubt, silence is preferable
+to speculation.
 
 Your task:
-- Assess whether the section's claims, instructions, and context accurately reflect the real codebase
+- Identify your section type and apply its rule exclusively
 - Identify any gaps, outdated references, incorrect assumptions, or missing context
 - Rate the alignment on a scale of 1–10 (10 = perfectly aligned)
 - Provide specific, actionable suggestions for improving this prompt section
@@ -242,14 +284,25 @@ One-paragraph assessment of how well this section aligns with the codebase.
 2. ...`;
 
 /**
- * Reads TypeScript source files from the project for codebase context.
- * Returns a concatenated string capped at maxChars.
+ * Reads project source and documentation files for codebase context.
+ * Includes root-level markdown docs (README, CONTRIBUTING, ARCHITECTURE,
+ * FUNCTIONAL_REQUIREMENTS) and TypeScript source files from src/.
+ * Returns a concatenated string split across a docs budget and a code budget.
  */
-async function readCodebaseContext(projectRoot: string, maxChars = 3000): Promise<string> {
-  const { readdir, readFile, stat } = await import('node:fs/promises');
+async function readCodebaseContext(projectRoot: string, maxChars = 4000): Promise<string> {
+  const { readFile, stat } = await import('node:fs/promises');
   const { join } = await import('node:path');
 
-  const collect = async (dir: string, files: string[]): Promise<void> => {
+  // Root-level markdown docs that provide project standards and audience context
+  const DOC_FILES = [
+    'CONTRIBUTING.md',
+    'README.md',
+    'ARCHITECTURE.md',
+    'FUNCTIONAL_REQUIREMENTS.md',
+  ];
+
+  const collectSrc = async (dir: string, files: string[]): Promise<void> => {
+    const { readdir } = await import('node:fs/promises');
     let entries: string[];
     try { entries = await readdir(dir); } catch { return; }
     for (const e of entries) {
@@ -257,25 +310,39 @@ async function readCodebaseContext(projectRoot: string, maxChars = 3000): Promis
       const full = join(dir, e);
       const s = await stat(full).catch(() => null);
       if (!s) continue;
-      if (s.isDirectory()) await collect(full, files);
+      if (s.isDirectory()) await collectSrc(full, files);
       else if (e.endsWith('.ts') && !e.endsWith('.d.ts')) files.push(full);
     }
   };
 
-  const files: string[] = [];
-  await collect(join(projectRoot, 'src'), files);
+  // Docs get up to 40% of the budget; source gets the rest
+  const docsBudget = Math.floor(maxChars * 0.4);
+  const srcBudget = maxChars - docsBudget;
 
-  let context = '';
-  for (const f of files) {
-    if (context.length >= maxChars) break;
+  let docsContext = '';
+  for (const name of DOC_FILES) {
+    if (docsContext.length >= docsBudget) break;
+    const full = join(projectRoot, name);
+    let text: string;
+    try { text = await readFile(full, 'utf8'); } catch { continue; }
+    const snippet = text.slice(0, Math.max(0, docsBudget - docsContext.length - name.length - 10));
+    docsContext += `\n<!-- --- ${name} --- -->\n${snippet}`;
+  }
+
+  const srcFiles: string[] = [];
+  await collectSrc(join(projectRoot, 'src'), srcFiles);
+
+  let srcContext = '';
+  for (const f of srcFiles) {
+    if (srcContext.length >= srcBudget) break;
     const rel = f.replace(projectRoot + '/', '');
     let text: string;
     try { text = await readFile(f, 'utf8'); } catch { continue; }
-    const snippet = text.slice(0, Math.max(0, maxChars - context.length - rel.length - 10));
-    context += `\n// --- ${rel} ---\n${snippet}`;
+    const snippet = text.slice(0, Math.max(0, srcBudget - srcContext.length - rel.length - 10));
+    srcContext += `\n// --- ${rel} ---\n${snippet}`;
   }
 
-  return context.trim();
+  return [docsContext.trim(), srcContext.trim()].filter(Boolean).join('\n\n');
 }
 
 /**
@@ -302,7 +369,7 @@ export async function* analyzePromptPartVsCodebase(
 **SECTION CONTENT**:
 ${sectionContent.slice(0, 2000)}
 
-**CODEBASE CONTEXT** (src/**/*.ts, truncated):
+**CODEBASE CONTEXT** (root docs + src/**/*.ts, truncated):
 \`\`\`typescript
 ${codebaseContext}
 \`\`\``;

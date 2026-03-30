@@ -111,6 +111,21 @@ globalThis.__promptSplitScroll  = { up, down, pageUp, pageDown, jumpStart, jumpE
 
 ---
 
+## Documentation Standards
+
+**This is a developer-facing tool** — all documentation targets internal contributors and AI agents, not external end-users. Refer to `CONTRIBUTING.md` for the authoritative standards; the key points are:
+
+- Every `src/` file must open with a JSDoc module header (`/** … @module path/to/module */`)
+- Every exported function, class, and interface needs a JSDoc block (one-liner is fine when the signature is self-explanatory)
+- Inline comments only where the *why* is non-obvious — never restate what the code does
+- See `CONTRIBUTING.md` § "Code Documentation Standards" for full rules and examples
+
+**Before making documentation changes**, review `README.md` and `CONTRIBUTING.md` to ensure any new content is consistent with existing conventions and does not duplicate what is already documented.
+
+**Terminology**: canonical term definitions live in `CONTRIBUTING.md` § "Terminology Glossary". Use those terms consistently in code, comments, and docs.
+
+---
+
 ## Key Conventions
 
 ### ESM imports require `.js` extensions
