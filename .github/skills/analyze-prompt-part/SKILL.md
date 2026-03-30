@@ -42,9 +42,9 @@ matching rule exclusively. Do not apply rules from other section types.**
 
 ---
 
-> **IMPORTANT — Role / Persona sections (read this before anything else):**
+> **IMPORTANT — Role / Persona / Preamble sections (read this before anything else):**
 >
-> If SECTION LABEL is "Role" or "Persona", apply ONLY the rule below and ignore
+> If SECTION LABEL is "Role", "Persona", or "Preamble", apply ONLY the rule below and ignore
 > all other rules in this block.
 >
 > A Role section defines WHO performs the task, not what the project's source
