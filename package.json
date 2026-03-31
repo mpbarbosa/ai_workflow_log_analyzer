@@ -19,7 +19,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/bin/analyze-logs.js",
     "build:watch": "tsc --watch",
     "dev": "tsx src/bin/analyze-logs.ts",
     "start": "tsx src/bin/analyze-logs.ts",
@@ -67,7 +67,8 @@
     "commander": "^14.0.3",
     "ink": "^6.8.0",
     "js-yaml": "^4.1.1",
-    "react": "^19.2.4"
+    "react": "^19.2.4",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -81,7 +82,6 @@
     "jest": "^30.3.0",
     "markdownlint-cli": "^0.48.0",
     "ts-jest": "^29.4.0",
-    "tsx": "^4.19.4",
     "typescript": "^5.9.3"
   }
 }
