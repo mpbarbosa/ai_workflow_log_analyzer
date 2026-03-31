@@ -72,12 +72,16 @@ export async function runAnalysisPipeline(
     avgAiLatencyMs: 0,
   };
 
-  // Prompt quality analysis (requires Copilot SDK)
+  // Prompt quality analysis (requires Copilot SDK — degrade gracefully on LLM errors)
   let promptQuality: Awaited<ReturnType<typeof analyzeAllPrompts>> = [];
   if (!opts.skipPromptQuality && prompts.length > 0) {
-    promptQuality = await analyzeAllPrompts(prompts, thresholds, (done, total) => {
-      opts.onProgress?.('Prompt quality', done, total);
-    });
+    try {
+      promptQuality = await analyzeAllPrompts(prompts, thresholds, (done, total) => {
+        opts.onProgress?.('Prompt quality', done, total);
+      });
+    } catch {
+      // LLM unavailable (e.g. no Copilot access, network error) — skip silently
+    }
   }
 
   const promptQualityIssues = promptQuality.flatMap((r) => (r.issue ? [r.issue] : []));
