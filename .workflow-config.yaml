@@ -124,6 +124,36 @@ step_overrides:
         - changelog_entry_missing: >
             The changed files introduce a user-visible feature, fix, or breaking
             change that is not yet recorded in CHANGELOG.md.
+      # Source files (.ts, .tsx, .js, .mjs) that appear in the changed-files list
+      # are READ-ONLY context.  Their sole purpose is to inform WHICH documentation
+      # needs updating and WHY — they must never receive before/after edit blocks.
+      source_files_role: >
+        Source files in the changed-files list are read-only context.
+        Inspect them to understand what changed (new exports, renamed flags, updated
+        behaviour), then express that understanding exclusively as edits to the files
+        in eligible_docs.  Do NOT produce edit blocks for .ts, .tsx, .js, or .mjs files.
+      # Concrete examples of what "update the documentation" means for this project.
+      # At least one of these must describe the intended edit before producing output.
+      nature_of_updates:
+        - reflect_new_or_renamed_exports: >
+            Update API.md or relevant section of ARCHITECTURE.md when a public
+            function, class, or type has been added, renamed, or removed.
+        - reflect_cli_flag_changes: >
+            Update README.md §Usage and FUNCTIONAL_REQUIREMENTS.md when a CLI flag
+            or option is added, renamed, removed, or its default value changes.
+        - update_usage_examples: >
+            Revise code-block examples in README.md or GETTING_STARTED.md when the
+            illustrated API, flag syntax, or output format no longer matches the code.
+        - update_architecture_description: >
+            Edit ARCHITECTURE.md when a component, pipeline stage, data-flow, or
+            TUI panel is added, removed, or structurally reorganised.
+        - add_missing_jsdoc: >
+            Insert a JSDoc block on any newly exported function, class, or interface
+            that currently has none (see CONTRIBUTING.md §Exported functions).
+      # The persona MUST consult standards_reference before producing any edit block.
+      # Familiarity with the audience table and update criteria is a pre-condition,
+      # not an optional step.
+      standards_check_required: true
       # Do NOT edit documentation files speculatively or for style reasons alone.
       # Silence is correct when no criterion above is met.
       block_speculative_edits: true
