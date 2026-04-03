@@ -248,10 +248,12 @@ npm test -- --testNamePattern="analyzes failures" # single test by name
 
 - Import from `../../src/module.js` (`.js` extension required even in test files)
 - Use `import.meta.url` + `fileURLToPath` instead of `__dirname` for fixture paths:
+
   ```typescript
   const __dirname = dirname(fileURLToPath(import.meta.url));
   const FIXTURE_DIR = join(__dirname, '../fixtures/sample_run');
   ```
+
 - In ESM mode, use `jest.unstable_mockModule()` + a dynamic `await import()` instead of `jest.mock()`.
   Import `jest` from `@jest/globals`, not the global.
 - Analyzer tests should cover the zero-issue case (clean events) and at least one issue-producing case.
@@ -280,7 +282,7 @@ The `useAnalysis` hook wraps `runAnalysisPipeline()` in a try/catch and maps out
 `state: 'error'`. The caught error message is stored in the `error` field and displayed by
 `App.tsx` in a full-screen error panel. The user can press `r` to retry.
 
-```
+```text
 idle ──run()──► running ──success──► done
                         └──catch───► error ──run()──► running
 ```

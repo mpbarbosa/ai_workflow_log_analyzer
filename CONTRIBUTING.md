@@ -122,6 +122,7 @@ There are no external end-users — do not write end-user or product-facing pros
   for the JSDoc module-header convention all source files must follow.
 
 **Example — well-formed issue object:**
+
 ```json
 {
   "title": "JSON.parse called without try/catch in metrics_parser.ts",
@@ -153,7 +154,8 @@ Version bumping rules:
 
 > **Trivial edits** (typo fixes, whitespace, formatting-only changes with no content impact) do **not** require a version bump or a `CHANGELOG.md` entry.
 
-When a documentation change affects system design, component interfaces, or feature specifications, also review and update `ARCHITECTURE.md` and/or `FUNCTIONAL_REQUIREMENTS.md` in the same commit to keep them consistent.
+When a documentation change affects system design, component interfaces, or feature specifications,
+also review and update `ARCHITECTURE.md` and/or `FUNCTIONAL_REQUIREMENTS.md` in the same commit to keep them consistent.
 
 ---
 
