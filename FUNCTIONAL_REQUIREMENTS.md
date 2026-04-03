@@ -177,6 +177,10 @@ Issues identified during automated log audits and addressed outside of versioned
 | RI-002 | `.github/skills/` directory undocumented            | Medium   | Done   |
 | RI-003 | Markdownlint not configured; 152 violations unfixed | Medium   | Done   |
 | RI-004 | Sequential await in `analyzeAllPrompts`             | Low      | Done   |
+| RI-005 | MD031/MD040 violations in ARCHITECTURE.md           | Low      | Done   |
+| RI-006 | MD031/MD013 violations in CONTRIBUTING.md           | Low      | Done   |
+| RI-007 | MD024 duplicate heading in GETTING_STARTED.md       | Low      | Done   |
+| RI-008 | Use `toHaveLength` instead of `.length).toBe` in tests | Low   | Done   |
 
 ---
 
