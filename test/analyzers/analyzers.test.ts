@@ -60,7 +60,7 @@ describe('analyzeFailures', () => {
   it('detects critical performance events as failures', () => {
     const events = [makePerformanceEvent('step_05', 51821, 97.77, true)];
     const issues = analyzeFailures(events);
-    expect(issues.length).toBe(1);
+    expect(issues).toHaveLength(1);
     expect(issues[0].category).toBe('failure');
     expect(issues[0].severity).toBe('critical');
     expect(issues[0].stepId).toBe('step_05');
