@@ -216,8 +216,14 @@ export function parsePromptParts(promptText: string): PromptPart[] {
     currentLines = [];
   };
 
+  // Track whether we are inside a fenced code block (``` … ```) so that
+  // bold-colon patterns inside injected file contents don't create spurious sections.
+  let inFence = false;
+
   rawLines.forEach((line, idx) => {
-    const m = line.match(SECTION_RE);
+    if (/^\s*`{3,}/.test(line)) inFence = !inFence;
+
+    const m = !inFence && line.match(SECTION_RE);
     if (m) {
       flush(idx + 1);
       currentLabel = (m[1] ?? m[2]).trim();

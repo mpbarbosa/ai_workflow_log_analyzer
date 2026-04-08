@@ -109,3 +109,104 @@ describe('parseRunPrompts', () => {
     expect(records).toEqual([]);
   });
 });
+
+describe('parsePromptParts', () => {
+  it('splits a simple structured prompt into named parts', () => {
+    const prompt = `**Role**: Senior engineer.\n\n**Task**: Validate configs.\n\n**Approach**: Be thorough.`;
+    const parts = parsePromptParts(prompt);
+    expect(parts.map((p) => p.label)).toEqual(['Role', 'Task', 'Approach']);
+  });
+
+  it('ignores bold-colon patterns inside a fenced code block', () => {
+    const prompt = [
+      '**Role**: Code reviewer.',
+      '',
+      '**Task**: Review the file below.',
+      '',
+      '```markdown',
+      '**Output Format:** This is inside a fence and must not create a section.',
+      '**Project Context:** Same here.',
+      '```',
+      '',
+      '**Approach**: Be thorough.',
+    ].join('\n');
+    const parts = parsePromptParts(prompt);
+    const labels = parts.map((p) => p.label);
+    expect(labels).toContain('Role');
+    expect(labels).toContain('Task');
+    expect(labels).toContain('Approach');
+    expect(labels).not.toContain('Output Format');
+    expect(labels).not.toContain('Project Context');
+  });
+
+  it('resumes section detection after the closing fence', () => {
+    const prompt = [
+      '**Role**: Developer.',
+      '',
+      '**Task**: See file.',
+      '```',
+      '**Inside**: inside fence',
+      '```',
+      '**Approach**: After fence.',
+    ].join('\n');
+    const parts = parsePromptParts(prompt);
+    const labels = parts.map((p) => p.label);
+    expect(labels).toContain('Approach');
+    expect(labels).not.toContain('Inside');
+  });
+
+  it('does NOT create sections from ### sub-headings', () => {
+    const prompt = [
+      '**Role**: Validator.',
+      '',
+      '**Task**: Check config files.',
+      '### Configuration Files in Scope',
+      '- file1.json',
+      '- file2.yaml',
+      '### Validation Tasks',
+      '- Check schema',
+    ].join('\n');
+    const parts = parsePromptParts(prompt);
+    const labels = parts.map((p) => p.label);
+    expect(labels).not.toContain('Configuration Files in Scope');
+    expect(labels).not.toContain('Validation Tasks');
+    // ### content stays in the Task section body
+    const taskPart = parts.find((p) => p.label === 'Task');
+    expect(taskPart?.lines.join('\n')).toContain('Configuration Files in Scope');
+    expect(taskPart?.lines.join('\n')).toContain('Validation Tasks');
+  });
+
+  it('fenced content with bold-colon lines is included in preceding section body', () => {
+    const prompt = [
+      '**Task**: Validate the following.',
+      '```yaml',
+      '**key**: value',
+      '```',
+    ].join('\n');
+    const parts = parsePromptParts(prompt);
+    const taskPart = parts.find((p) => p.label === 'Task');
+    expect(taskPart).toBeDefined();
+    const body = taskPart!.lines.join('\n');
+    expect(body).toContain('**key**: value');
+  });
+
+  it('handles multiple fenced blocks in the same section', () => {
+    const prompt = [
+      '**Role**: Specialist.',
+      '**Task**: Review two files.',
+      '```',
+      '**bold-colon-in-fence-1:**',
+      '```',
+      'Middle text.',
+      '```',
+      '**bold-colon-in-fence-2:**',
+      '```',
+      '**Approach**: Done.',
+    ].join('\n');
+    const parts = parsePromptParts(prompt);
+    const labels = parts.map((p) => p.label);
+    expect(labels).not.toContain('bold-colon-in-fence-1');
+    expect(labels).not.toContain('bold-colon-in-fence-2');
+    expect(labels).toContain('Approach');
+  });
+});

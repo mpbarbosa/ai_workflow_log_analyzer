@@ -251,6 +251,17 @@ You will be given:
   Assess technical accuracy — do the instructions, file references, and assumptions match
   the actual codebase structure and current code?
 
+  **Important for Task sections**: The CODEBASE CONTEXT is the TARGET project being
+  validated or reviewed by the AI workflow. The validation/analysis code itself lives
+  in a separate `ai_workflow.js` system and is NOT expected to appear in the target
+  project's source files. Absence of validation scripts, analyzers, or workflow logic
+  in the codebase context is normal and must NOT be flagged as a misalignment.
+
+  Task sections may organize their body with `### Heading` markdown headings (e.g.
+  "### Configuration Files in Scope", "### Project Context"). These are sub-sections
+  of the Task, not separate top-level sections — do not penalize a Task for referencing
+  content that appears in an adjacent markdown heading below it.
+
 - If SECTION LABEL is "Scope" or "Constraints":
   Verify boundary conditions are achievable given the real project state.
 
@@ -311,7 +322,10 @@ async function readCodebaseContext(projectRoot: string, maxChars = 4000): Promis
       const s = await stat(full).catch(() => null);
       if (!s) continue;
       if (s.isDirectory()) await collectSrc(full, files);
-      else if (e.endsWith('.ts') && !e.endsWith('.d.ts')) files.push(full);
+      else if (
+        (e.endsWith('.ts') && !e.endsWith('.d.ts')) ||
+        (e.endsWith('.js') && !e.endsWith('.min.js'))
+      ) files.push(full);
     }
   };
 
