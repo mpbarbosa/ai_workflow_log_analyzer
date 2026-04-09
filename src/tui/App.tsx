@@ -104,7 +104,12 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       if (cancelled) return;
 
       const prompt =
-        `[[PLAN]] Fix the issues reported in this analysis and investigate the ${join(dirname(projectRoot), 'ai_workflow.js')} project directory in order to find the prompt template origins:\n\n${content}`;
+        `[[PLAN]] Fix the issues reported in this analysis and investigate the ` +
+        `${join(dirname(projectRoot), 'ai_workflow.js')} project directory in order ` +
+        `to find the prompt template origins.\n\n` +
+        `Analysis file: ${filePath}\n` +
+        `Rendered prompts for this run: ${projectRoot}/.ai_workflow/logs/ (under the run directory from the analysis)\n\n` +
+        `${content}`;
 
       // Suspend Ink: exit alternate screen and disable raw mode
       setRawMode(false);
