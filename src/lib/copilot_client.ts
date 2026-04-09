@@ -253,19 +253,33 @@ You will be given:
 
   **Important for Task sections**: The CODEBASE CONTEXT is the TARGET project being
   validated or reviewed by the AI workflow. The validation/analysis code itself lives
-  in a separate `ai_workflow.js` system and is NOT expected to appear in the target
+  in a separate \`ai_workflow.js\` system and is NOT expected to appear in the target
   project's source files. Absence of validation scripts, analyzers, or workflow logic
   in the codebase context is normal and must NOT be flagged as a misalignment.
 
-  Task sections may organize their body with `### Heading` markdown headings (e.g.
+  Task sections may organize their body with \`### Heading\` markdown headings (e.g.
   "### Configuration Files in Scope", "### Project Context"). These are sub-sections
   of the Task, not separate top-level sections — do not penalize a Task for referencing
   content that appears in an adjacent markdown heading below it.
+
+  **Rendered-variable rule**: Task sections are often generated from templates with
+  placeholder values. If SECTION CONTENT contains resolved fields such as \`none found\`,
+  \`N/A\`, \`unknown\`, empty path lists, or zero counts, treat them as possible
+  project-specific template variable outcomes rather than template defects. Do NOT
+  recommend changing the template unless the wording is misleading even when such
+  values are absent.
 
 - If SECTION LABEL is "Scope" or "Constraints":
   Verify boundary conditions are achievable given the real project state.
 
 ---
+
+**Prompt flaw vs. context limitation**: Clearly separate these two in your findings:
+1. A flaw in the prompt section itself (ambiguous wording, wrong file reference, incorrect assumption)
+2. Insufficient or truncated evidence in CODEBASE CONTEXT preventing verification
+
+Only finding type 1 should materially reduce the alignment score. Do not deduct more
+than 1–2 points solely because a claim cannot be verified from the truncated context.
 
 **Scope**: You have been given ONLY the section text and the truncated codebase snapshot.
 Do NOT assert facts about the codebase that are not explicitly visible in the provided
