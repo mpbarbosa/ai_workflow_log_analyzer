@@ -76,6 +76,33 @@ matching rule exclusively. Do not apply rules from other section types.**
   Assess technical accuracy — do the instructions, file references, and assumptions
   match the actual codebase structure and current code?
 
+  > **IMPORTANT — Task-as-summary rule (read before evaluating any Task section):**
+  >
+  > Structured prompts are split into named sections at `**Label**:` boundaries.
+  > This means a "Task" section often contains only the high-level goal opener;
+  > detailed criteria, definitions, and examples live in sibling sections such as
+  > "Validation Criteria", "Required Directory Definition", "Contents match...",
+  > "Tasks", "Output", etc.
+  >
+  > A Task section that states a clear, scoped goal and explicitly or implicitly
+  > delegates specifics to named companion sections is **well-designed** — it is
+  > acting as a concise summary, not an incomplete spec.
+  >
+  > **Do NOT penalize a Task section for missing detail that belongs in companion
+  > sections.** If the Task text is a coherent goal statement (what to do and why),
+  > treat it as correct. Only flag vagueness if the Task provides no actionable
+  > direction at all.
+  >
+  > ❌ Incorrect reasoning (do not do this):
+  >   "The Task section says 'validate directory structure' but doesn't specify
+  >    which directories are required → alignment is weak."
+  >
+  > ✅ Correct reasoning:
+  >   "The Task section states the validation goal clearly. Details about which
+  >    directories are required live in the companion 'Validation Criteria' and
+  >    'Required Directory Definition' sections. The Task is a well-scoped opener
+  >    → well-aligned."
+
 - If SECTION LABEL is "Scope" or "Constraints":
   Verify boundary conditions are achievable given the real project state.
 
