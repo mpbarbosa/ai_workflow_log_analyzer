@@ -8,7 +8,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdin, useStdout } from 'ink';
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { Header } from './components/Header.js';
 import { StatusBar } from './components/StatusBar.js';
 import { RunSelector } from './components/RunSelector.js';
@@ -103,12 +103,25 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       const content = await readFile(filePath, 'utf8').catch(() => '');
       if (cancelled) return;
 
+      const aiWorkflowRoot = join(dirname(projectRoot), 'ai_workflow.js');
+      const runId = basename(dirname(filePath)); // e.g. workflow_20260408_201258
+      const promptsDir = `${projectRoot}/.ai_workflow/logs/${runId}/prompts/`;
+      const templateFile = `${aiWorkflowRoot}/.workflow_core/config/ai_helpers.yaml`;
+
       const prompt =
-        `[[PLAN]] Fix the issues reported in this analysis and investigate the ` +
-        `${join(dirname(projectRoot), 'ai_workflow.js')} project directory in order ` +
-        `to find the prompt template origins.\n\n` +
+        `[[PLAN]] Fix the issues reported in this analysis by updating the prompt ` +
+        `template in the ${aiWorkflowRoot} project.\n\n` +
         `Analysis file: ${filePath}\n` +
-        `Rendered prompts for this run: ${projectRoot}/.ai_workflow/logs/ (under the run directory from the analysis)\n\n` +
+        `Rendered prompts for this run: ${promptsDir}\n\n` +
+        `**How to find and fix the template:**\n` +
+        `1. Prompt templates live in \`${templateFile}\`.\n` +
+        `2. Search that file for a YAML key matching the step/section name shown in the analysis ` +
+        `(look for a \`task_template:\` block inside the matching step key).\n` +
+        `3. The rendered prompt files in \`${promptsDir}\` show which step key was used — ` +
+        `open the relevant step subdirectory to confirm the key name.\n` +
+        `4. Edit the \`task_template:\` text to address the suggestions in the analysis.\n` +
+        `5. Bump the \`# vX.Y.Z\` changelog comment at the top of \`${templateFile}\`.\n` +
+        `6. Validate the YAML (e.g. \`python3 -c "import yaml; yaml.safe_load(open('${templateFile}'))"\`) and commit.\n\n` +
         `${content}`;
 
       // Suspend Ink: exit alternate screen and disable raw mode
