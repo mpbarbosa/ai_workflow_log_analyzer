@@ -106,7 +106,11 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       const aiWorkflowRoot = join(dirname(projectRoot), 'ai_workflow.js');
       const runId = basename(dirname(filePath)); // e.g. workflow_20260408_201258
       const promptsDir = `${projectRoot}/.ai_workflow/logs/${runId}/prompts/`;
-      const templateFile = `${aiWorkflowRoot}/.workflow_core/config/ai_helpers.yaml`;
+      const templateDir = `${aiWorkflowRoot}/.workflow_core/config/ai_helpers`;
+      const indexFile = `${templateDir}/index.yaml`;
+      const generatedFile = `${aiWorkflowRoot}/.workflow_core/config/ai_helpers.yaml`;
+      const buildScript = `${aiWorkflowRoot}/.workflow_core/scripts/build_ai_helpers.py`;
+      const versionSource = buildScript;
 
       const prompt =
         `[[PLAN]] Fix the issues reported in this analysis by updating the prompt ` +
@@ -114,14 +118,16 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         `Analysis file: ${filePath}\n` +
         `Rendered prompts for this run: ${promptsDir}\n\n` +
         `**How to find and fix the template:**\n` +
-        `1. Prompt templates live in \`${templateFile}\`.\n` +
-        `2. Search that file for a YAML key matching the step/section name shown in the analysis ` +
-        `(look for a \`task_template:\` block inside the matching step key).\n` +
+        `1. Prompt templates live in partitioned sub-files under \`${templateDir}/\`.\n` +
+        `   \`${generatedFile}\` is auto-generated — do NOT edit it directly.\n` +
+        `2. Use \`${indexFile}\` to find which sub-file contains the step key ` +
+        `(format: \`step_key: sub-file.yaml\`).\n` +
         `3. The rendered prompt files in \`${promptsDir}\` show which step key was used — ` +
         `open the relevant step subdirectory to confirm the key name.\n` +
-        `4. Edit the \`task_template:\` text to address the suggestions in the analysis.\n` +
-        `5. Bump the \`# vX.Y.Z\` changelog comment at the top of \`${templateFile}\`.\n` +
-        `6. Validate the YAML (e.g. \`python3 -c "import yaml; yaml.safe_load(open('${templateFile}'))"\`) and commit.\n\n` +
+        `4. Edit the \`task_template:\` block inside the matching step key in the sub-file.\n` +
+        `5. Bump the \`# Version: X.Y.Z\` line in \`${versionSource}\` (the HEADER constant).\n` +
+        `6. Rebuild: \`python3 ${buildScript}\`\n` +
+        `7. Validate the generated YAML: \`python3 -c "import yaml; yaml.safe_load(open('${generatedFile}'))"\` and commit.\n\n` +
         `${content}`;
 
       // Suspend Ink: exit alternate screen and disable raw mode
