@@ -8,6 +8,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdin, useStdout } from 'ink';
 import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import { Header } from './components/Header.js';
 import { StatusBar } from './components/StatusBar.js';
 import { RunSelector } from './components/RunSelector.js';
@@ -103,7 +104,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       if (cancelled) return;
 
       const prompt =
-        `[[PLAN]] Fix the issues reported in this analysis:\n\n${content}`;
+        `[[PLAN]] Fix the issues reported in this analysis and investigate the ${join(dirname(projectRoot), 'ai_workflow.js')} project directory in order to find the prompt template origins:\n\n${content}`;
 
       // Suspend Ink: exit alternate screen and disable raw mode
       setRawMode(false);
@@ -111,6 +112,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
 
       spawnSync('copilot', ['-i', prompt], {
         stdio: 'inherit',
+        cwd: projectRoot,
         env: { ...process.env },
       });
 
@@ -308,6 +310,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         runId={runId}
         status={state === 'running' ? 'running' : state === 'done' ? 'done' : state === 'error' ? 'error' : 'idle'}
         mode={mode}
+        projectRoot={projectRoot}
       />
 
       <Box flexGrow={1}>
