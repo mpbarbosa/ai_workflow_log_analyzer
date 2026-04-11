@@ -26,6 +26,29 @@ function runCli(args: string[], opts: { env?: NodeJS.ProcessEnv; cwd?: string } 
   });
 }
 
+describe('analyze-logs --help / -h', () => {
+  it('prints help and exits 0 with --help', async () => {
+    const { code, stdout } = await runCli(['--help']);
+    expect(code).toBe(0);
+    expect(stdout).toContain('analyze-logs');
+    expect(stdout).toContain('--tui');
+    expect(stdout).toContain('--json');
+    expect(stdout).toContain('--md');
+    expect(stdout).toContain('--run');
+    expect(stdout).toContain('--skip-prompt-quality');
+    expect(stdout).toContain('--skip-summary');
+    expect(stdout).toContain('--threshold-config');
+    expect(stdout).toContain('Examples:');
+  });
+
+  it('prints help and exits 0 with -h', async () => {
+    const { code, stdout } = await runCli(['-h']);
+    expect(code).toBe(0);
+    expect(stdout).toContain('analyze-logs');
+    expect(stdout).toContain('--help');
+  });
+});
+
 describe('analyze-logs CLI', () => {
   let tmpDir: string;
   let logsDir: string;

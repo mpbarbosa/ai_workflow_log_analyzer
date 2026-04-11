@@ -251,6 +251,33 @@ You will be given:
   Assess technical accuracy — do the instructions, file references, and assumptions match
   the actual codebase structure and current code?
 
+  > **IMPORTANT — Task-as-summary rule (read before evaluating any Task section):**
+  >
+  > Structured prompts are split into named sections at \`**Label**:\` boundaries.
+  > This means a "Task" section often contains only the high-level goal opener;
+  > detailed criteria, definitions, and examples live in sibling sections such as
+  > "Validation Criteria", "Required Directory Definition", "Contents match...",
+  > "Tasks", "Output", etc.
+  >
+  > A Task section that states a clear, scoped goal and explicitly or implicitly
+  > delegates specifics to named companion sections is **well-designed** — it is
+  > acting as a concise summary, not an incomplete spec.
+  >
+  > **Do NOT penalize a Task section for missing detail that belongs in companion
+  > sections.** If the Task text is a coherent goal statement (what to do and why),
+  > treat it as correct. Only flag vagueness if the Task provides no actionable
+  > direction at all.
+  >
+  > ❌ Incorrect reasoning (do not do this):
+  >   "The Task section says 'validate directory structure' but doesn't specify
+  >    which directories are required → alignment is weak."
+  >
+  > ✅ Correct reasoning:
+  >   "The Task section states the validation goal clearly. Details about which
+  >    directories are required live in the companion 'Validation Criteria' and
+  >    'Required Directory Definition' sections. The Task is a well-scoped opener
+  >    → well-aligned."
+
   **Important for Task sections**: The CODEBASE CONTEXT is the TARGET project being
   validated or reviewed by the AI workflow. The validation/analysis code itself lives
   in a separate \`ai_workflow.js\` system and is NOT expected to appear in the target
@@ -281,6 +308,14 @@ You will be given:
 Only finding type 1 should materially reduce the alignment score. Do not deduct more
 than 1–2 points solely because a claim cannot be verified from the truncated context.
 
+**Recommendation discipline**:
+- Be assertive. Do not hedge with "optionally", "consider", "may want to", or similar phrasing.
+- If you identify a prompt flaw, each suggestion must describe a concrete edit to the prompt text
+  or prompt structure and explain why that change is needed.
+- If you do NOT identify a concrete prompt flaw, explicitly say \`No prompt change needed\` in the
+  Summary and make the first Suggestions item \`No prompt change needed — current wording is aligned.\`
+- Do not invent improvement work just to avoid an empty review.
+
 **Scope**: You have been given ONLY the section text and the truncated codebase snapshot.
 Do NOT assert facts about the codebase that are not explicitly visible in the provided
 CODEBASE CONTEXT. The snapshot is truncated — absence of a symbol or file does not mean
@@ -301,8 +336,8 @@ Output format (markdown):
 One-paragraph assessment of how well this section aligns with the codebase.
 
 ## Findings
-- Finding 1 (with file/line reference if applicable)
-- Finding 2
+- Prompt flaw: ...
+- Context limitation: ...
 
 ## Suggestions
 1. Specific improvement to the prompt section

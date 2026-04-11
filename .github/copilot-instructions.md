@@ -198,13 +198,16 @@ Prompt `.md` files follow a strict format parsed by `parsePromptFileContent()`:
 
 ## Prompt
 ```
+
 <prompt text>
 ```
 
 ## Response
+
 ```
 <response text>
 ```
+
 ```
 
 `parsePromptFileContent()` returns `null` for any file that doesn't match. The split viewer checks this at load time and shows an error pane rather than crashing.

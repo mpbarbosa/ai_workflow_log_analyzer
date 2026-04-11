@@ -305,4 +305,4 @@ rather than failing the entire report. The same applies to `summarizeReport()`.
 
 ---
 
-*Applies to **v0.2.2**. Update this line whenever the package version is bumped.*
+*Applies to **v0.2.3**. Update this line whenever the package version is bumped.*

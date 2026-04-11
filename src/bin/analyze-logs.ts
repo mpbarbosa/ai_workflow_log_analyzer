@@ -50,6 +50,35 @@ program
   .option('--skip-prompt-quality', 'Skip LLM prompt quality analysis (faster, no SDK required)')
   .option('--skip-summary', 'Skip LLM executive summary')
   .option('--threshold-config <path>', 'Path to threshold config JSON/YAML file')
+  .addHelpText('after', `
+Examples:
+  # Interactive TUI (default mode)
+  $ analyze-logs --tui /path/to/ai-workflow-project
+  $ analyze-logs --tui --project /path/to/ai-workflow-project
+
+  # Headless / CI — write reports to files
+  $ analyze-logs --json report.json /path/to/project
+  $ analyze-logs --md report.md /path/to/project
+
+  # Both formats in one pass (report lands in .ai_workflow/analysis/<run>/step_N/)
+  $ analyze-logs --json --md /path/to/project
+
+  # Target a specific run by ID
+  $ analyze-logs --run workflow_20260327_012345 --json /path/to/project
+
+  # Faster: skip LLM-assisted analyses (no Copilot SDK required)
+  $ analyze-logs --skip-prompt-quality --skip-summary --md report.md /path/to/project
+
+  # Custom detection thresholds (JSON or YAML)
+  $ analyze-logs --threshold-config thresholds.yaml --json /path/to/project
+
+Notes:
+  - Omitting --json and --md always launches the interactive TUI.
+  - --json/--md without a file path auto-generates the output path under
+    <project-root>/.ai_workflow/analysis/<run-id>/step_<N>/.
+  - --skip-prompt-quality also suppresses the executive summary.
+  - Requires GitHub Copilot CLI authenticated (gh copilot --version) for
+    LLM-assisted prompt quality analysis and executive summary.`)
   .action(async (projectRootArg: string, opts: {
     tui?: boolean;
     project?: string;

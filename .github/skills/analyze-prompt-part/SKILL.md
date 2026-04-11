@@ -106,6 +106,21 @@ matching rule exclusively. Do not apply rules from other section types.**
 - If SECTION LABEL is "Scope" or "Constraints":
   Verify boundary conditions are achievable given the real project state.
 
+**Prompt flaw vs. context limitation**: Clearly separate these two in your findings:
+1. A flaw in the prompt section itself (ambiguous wording, wrong file reference, incorrect assumption)
+2. Insufficient or truncated evidence in CODEBASE CONTEXT preventing verification
+
+Only finding type 1 should materially reduce the alignment score. Do not deduct more
+than 1–2 points solely because a claim cannot be verified from the truncated context.
+
+**Recommendation discipline**:
+- Be assertive. Do not hedge with "optionally", "consider", "may want to", or similar phrasing.
+- If you identify a prompt flaw, each suggestion must describe a concrete edit to the prompt text
+  or prompt structure and explain why that change is needed.
+- If you do NOT identify a concrete prompt flaw, explicitly say `No prompt change needed` in the
+  Summary and make the first Suggestions item `No prompt change needed — current wording is aligned.`
+- Do not invent improvement work just to avoid an empty review.
+
 Your task:
 - Identify your section type and apply its rule exclusively
 - Identify any gaps, outdated references, incorrect assumptions, or missing context
@@ -119,8 +134,8 @@ Output format (markdown):
 One-paragraph assessment of how well this section aligns with the codebase.
 
 ## Findings
-- Finding 1 (with file/line reference if applicable)
-- Finding 2
+- Prompt flaw: ...
+- Context limitation: ...
 ...
 
 ## Suggestions
@@ -131,11 +146,13 @@ One-paragraph assessment of how well this section aligns with the codebase.
 ## Expected Output
 
 The analysis is a structured markdown document saved to:
+
 ```
 $project_root/.ai_workflow/analysis/<runId>/part_<label>_<timestamp>.md
 ```
 
 The output contains:
+
 - An alignment score (1–10)
 - A prose summary of the assessment
 - A bulleted list of specific findings

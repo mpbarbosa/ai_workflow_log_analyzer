@@ -1,12 +1,13 @@
 /**
  * useFileTree hook — builds a flat navigable list of files in a run directory.
  * Directories are collapsible; leaf items carry the full path for viewing.
+ * File entries include the size in bytes for human-readable display.
  * @module tui/hooks/useFileTree
  */
 
 import { useState, useEffect } from 'react';
 import { readdir, stat } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 
 export interface FileEntry {
   /** Display label (indented name) */
@@ -19,6 +20,25 @@ export interface FileEntry {
   isExpanded?: boolean;
   /** Key used to track expansion state */
   key: string;
+  /** File size in bytes — populated for files only, undefined for directories */
+  sizeBytes?: number;
+}
+
+/**
+ * Converts a raw byte count into a human-readable size string.
+ * Uses 1-decimal-place precision for KB, MB, and GB.
+ *
+ * @example
+ * formatFileSize(512)       // "512 B"
+ * formatFileSize(2457)      // "2.4 KB"
+ * formatFileSize(1572864)   // "1.5 MB"
+ * formatFileSize(1610612736) // "1.5 GB"
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
 async function scanDir(dir: string, depth: number): Promise<FileEntry[]> {
@@ -33,8 +53,11 @@ async function scanDir(dir: string, depth: number): Promise<FileEntry[]> {
   for (const name of names) {
     const full = join(dir, name);
     let isDir = false;
+    let sizeBytes: number | undefined;
     try {
-      isDir = (await stat(full)).isDirectory();
+      const s = await stat(full);
+      isDir = s.isDirectory();
+      if (!isDir) sizeBytes = s.size;
     } catch { /* treat as file on error */ }
     if (isDir) {
       entries.push({
@@ -52,6 +75,7 @@ async function scanDir(dir: string, depth: number): Promise<FileEntry[]> {
         depth,
         isDir: false,
         key: full,
+        sizeBytes,
       });
     }
   }
@@ -65,13 +89,16 @@ async function buildTree(runDir: string, analysisDir: string | null): Promise<Fi
   for (const name of topNames) {
     const full = join(runDir, name);
     let isDir = false;
+    let sizeBytes: number | undefined;
     try {
-      isDir = (await stat(full)).isDirectory();
+      const s = await stat(full);
+      isDir = s.isDirectory();
+      if (!isDir) sizeBytes = s.size;
     } catch { /* treat as file on error */ }
     if (isDir) {
       result.push({ label: name + '/', filePath: null, depth: 0, isDir: true, isExpanded: false, key: full });
     } else {
-      result.push({ label: name, filePath: full, depth: 0, isDir: false, key: full });
+      result.push({ label: name, filePath: full, depth: 0, isDir: false, key: full, sizeBytes });
     }
   }
 

@@ -10,6 +10,8 @@ SDK.
 |----------|-------------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Codebase structure, pipeline design, TUI layout, and key conventions |
 | [FUNCTIONAL_REQUIREMENTS.md](FUNCTIONAL_REQUIREMENTS.md) | Numbered functional requirements (FR-1.x – FR-5.x) |
+| [API.md](API.md) | Programmatic API reference — pipeline, analyzers, reporters, copilot client |
+| [GETTING_STARTED.md](GETTING_STARTED.md) | Contributor onboarding — setup, dev commands, and extension guide |
 | [CHANGELOG.md](CHANGELOG.md) | Version history and release notes |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Documentation standards, versioning rules, terminology glossary |
 
@@ -40,6 +42,9 @@ npx ai-workflow-log-analyzer --tui /path/to/project
 ```
 
 ## Usage
+
+Run `analyze-logs --help` (or `-h`) to print a full reference of all flags and examples directly in
+your terminal.
 
 ### Interactive TUI (default)
 

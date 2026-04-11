@@ -1,6 +1,6 @@
 /** MetricsPanel — ASCII bar charts for step durations and LLM latency. */
 import React from 'react';
-import { Box, Text } from 'ink';
+import { Box, Text, useStdout } from 'ink';
 import type { RunMetrics } from '../../types/index.js';
 
 interface MetricsPanelProps {
@@ -18,7 +18,14 @@ function fmtMs(ms: number): string {
 }
 
 export function MetricsPanel({ metrics, focused }: MetricsPanelProps) {
+  const { stdout } = useStdout();
   const border = focused ? 'double' : 'single';
+
+  // Fixed rows: border(2) + title(1) + "Step Durations" section(2) +
+  // "Avg AI Latency"(3) + "Peak Memory"(3) + "AI Calls"(2) = 13
+  const FIXED_ROWS = 13;
+  const contentRows = (stdout?.rows ?? 40) - 6; // subtract header + statusbar chrome
+  const maxSteps = Math.max(1, Math.floor((contentRows - FIXED_ROWS) / 2));
 
   if (!metrics) {
     return (
@@ -37,7 +44,7 @@ export function MetricsPanel({ metrics, focused }: MetricsPanelProps) {
 
   const slowestSteps = [...metrics.steps]
     .sort((a, b) => b.durationMs - a.durationMs)
-    .slice(0, 7);
+    .slice(0, maxSteps);
 
   const maxDuration = slowestSteps[0]?.durationMs ?? 1;
 

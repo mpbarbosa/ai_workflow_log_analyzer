@@ -181,7 +181,13 @@ Issues identified during automated log audits and addressed outside of versioned
 | RI-006 | MD031/MD013 violations in CONTRIBUTING.md           | Low      | Done   |
 | RI-007 | MD024 duplicate heading in GETTING_STARTED.md       | Low      | Done   |
 | RI-008 | Use `toHaveLength` instead of `.length).toBe` in tests | Low   | Done   |
+| RI-009 | Persist rendered prompts directory path in run log output for prompt-part investigations | Low | Open |
+| RI-010 | Define a machine-readable analyzer-prompt metadata contract before any extraction to `ai_workflow_core` (`domain`, `intended_consumers`, `required_inputs`, `output_contract`, `repository_assumptions`, `stability`, `owner`) | Medium | Open |
+| RI-011 | Add a dedicated analyzer-prompt catalog in `ai_workflow_core` instead of forcing analyzer SDK prompts into the existing `ai_helpers.yaml` workflow-persona model | Medium | Open |
+| RI-012 | Add typed loader/filtering in `ai_workflow_core` so consumers can resolve only prompts explicitly compatible with their project and input/output contracts | Medium | Open |
+| RI-013 | Extract only the reusable analyzer prompts (`SYSTEM_PROMPT_QUALITY`, `SYSTEM_SUMMARIZE`) after the metadata contract and dedicated catalog exist | Medium | Open |
+| RI-014 | Keep analyzer-local prompts (`SYSTEM_ANALYZE_PART`, TUI issue-analysis prompts, and `App.tsx` `ai_workflow.js` handoff instructions) in this repository and document that boundary explicitly | Medium | Open |
 
 ---
 
-*Applies to **v0.2.2**. Update this line whenever the package version is bumped.*
+*Applies to **v0.2.3**. Update this line whenever the package version is bumped.*

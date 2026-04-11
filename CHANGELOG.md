@@ -6,7 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [0.2.2] — 2026-03-30
+## [Unreleased]
+
+### Changed
+
+- `src/lib/copilot_client.ts` — Synced the runtime `analyze-prompt-part` system prompt with the
+  stronger Task-section guidance from the skill definition, including the explicit
+  "Task-as-summary" rule so Task openers are not penalized for detail delegated to companion
+  sections.
+- `src/lib/copilot_client.ts`, `.github/skills/analyze-prompt-part/SKILL.md` — Tightened prompt-part
+  analysis guidance so reviews are more assertive and actionable: they now distinguish prompt flaws
+  from context limitations explicitly, forbid hedged suggestions, and require a clear
+  `No prompt change needed` outcome when no concrete prompt flaw is found.
+
+---
+
+## [0.2.3] — 2026-03-30
 
 ### Changed
 

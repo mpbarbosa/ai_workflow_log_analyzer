@@ -7,6 +7,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import type { FileEntry } from '../hooks/useFileTree.js';
+import { formatFileSize } from '../hooks/useFileTree.js';
 
 interface FileTreeProps {
   entries: FileEntry[];
@@ -76,6 +77,9 @@ export function FileTree({ entries, selectedIndex, focused, loading, openedPath,
         }
 
         const label = `${indent}${icon}${entry.label}`;
+        const sizeLabel = !entry.isDir && entry.sizeBytes !== undefined
+          ? ` ${formatFileSize(entry.sizeBytes)}`
+          : '';
 
         return (
           <Box key={entry.key} paddingX={1}>
@@ -86,6 +90,15 @@ export function FileTree({ entries, selectedIndex, focused, loading, openedPath,
             >
               {label}
             </Text>
+            {sizeLabel !== '' && (
+              <Text
+                color={isSelected && focused ? 'black' : undefined}
+                backgroundColor={isSelected && focused ? 'cyan' : undefined}
+                dimColor
+              >
+                {sizeLabel}
+              </Text>
+            )}
           </Box>
         );
       })}
