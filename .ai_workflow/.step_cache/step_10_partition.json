@@ -2,17 +2,17 @@
   "version": 1,
   "partitionIndex": 1,
   "totalPartitions": 9,
-  "filesHash": "79fc1ce0",
+  "filesHash": "cee88bc1",
   "partitionLabels": [
-    "src/bin, src/reporters",
     "src/tui",
     "src/tui (2)",
     "src/tui (3)",
     "src/tui (4)",
+    "src/bin, src/lib",
     "src/analyzers",
     "src, src/parsers, src/types",
     ".markdownlint.json, package-lock.json, package.json, tsconfig.json, eslint.config.mjs",
     "jest.config.mjs"
   ],
-  "updatedAt": "2026-03-30T15:27:50.391Z"
+  "updatedAt": "2026-04-11T20:38:28.565Z"
 }

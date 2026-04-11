@@ -25,6 +25,31 @@
       "score": 100,
       "issueCount": 0,
       "lastAnalyzed": "2026-03-30T15:27:50.391Z"
+    },
+    "src/tui/hooks/useFileTree.ts": {
+      "score": 100,
+      "issueCount": 0,
+      "lastAnalyzed": "2026-04-11T20:38:28.564Z"
+    },
+    "src/tui/components/FileTree.tsx": {
+      "score": 100,
+      "issueCount": 0,
+      "lastAnalyzed": "2026-04-11T20:38:28.564Z"
+    },
+    "src/tui/components/Header.tsx": {
+      "score": 100,
+      "issueCount": 0,
+      "lastAnalyzed": "2026-04-11T20:38:28.564Z"
+    },
+    "src/tui/components/IssuesPanel.tsx": {
+      "score": 100,
+      "issueCount": 0,
+      "lastAnalyzed": "2026-04-11T20:38:28.564Z"
+    },
+    "src/tui/components/MetricsPanel.tsx": {
+      "score": 100,
+      "issueCount": 0,
+      "lastAnalyzed": "2026-04-11T20:38:28.564Z"
     }
   }
 }
