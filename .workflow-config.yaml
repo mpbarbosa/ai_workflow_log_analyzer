@@ -3,7 +3,7 @@
 project:
   name: "ai_workflow_log_analyzer"
   type: "typescript-tool"
-  kind: "log_analysis_tui"  # domain: interactive TUI for ai_workflow.js log analysis
+  kind: "nodejs_automation"  # closest supported workflow kind for this terminal TUI tool
   version: "0.2.2"          # keep in sync with package.json
   description: "Developer-facing interactive TUI tool for internal contributors to analyze ai_workflow.js execution logs — surfaces failures, bugs, prompt quality issues, and performance regressions using the GitHub Copilot SDK"
 
@@ -17,6 +17,7 @@ tech_stack:
   test_command: "npm test"
   lint_command: "npm run lint"
   lint_commands:
+    javascript: "npm run lint"  # ESLint also covers repo-level .mjs config files
     typescript: "npm run lint"  # ESLint with TypeScript plugin
 
 structure:
@@ -35,37 +36,323 @@ structure:
     - CONTRIBUTING.md
     - CHANGELOG.md
 
+version:
+  config_files:
+    - package.json
+
+# ============================================================================
+# AI PERSONAS
+# ============================================================================
+# Personas selected for this project (TypeScript TUI tool (Ink/React) for
+# analyzing ai_workflow.js execution logs — terminal, NOT web).
+#
+# ENABLED — matched to this project's stack and characteristics:
+#   typescript_reviewer        — TypeScript, tsx runtime, Ink/React types; step_19
+#   documentation_expert       — ARCHITECTURE, FUNCTIONAL_REQUIREMENTS, README; steps 01, 02
+#   technical_writer           — markdown quality; step_13
+#   test_engineer              — jest/ts-jest test review and generation; steps 06-08
+#   code_quality_analyst       — ESLint, TypeScript quality; step_10
+#   architecture_reviewer      — TUI component architecture, log analysis pipeline; step_00
+#   devops_engineer            — npm scripts, tsc build, tsx runtime; steps 03, 04
+#   dependency_analyst         — Ink, jest/ts-jest, Copilot SDK deps; step_09
+#   git_specialist             — conventional commits, git finalization; step_12
+#   async_performance_engineer — async log streaming, JSON parsing performance; step_20
+#   performance_engineer       — log parsing throughput, AI analysis latency; step_23
+#
+# DISABLED — not applicable:
+#   prompt_engineer         — no prompt engineering; log analysis tool
+#   ux_analyst              — terminal UI, not web application
+#   accessibility_expert    — terminal UI, not web-accessible
+#   aws_serverless_engineer — no AWS infrastructure
+#   api_designer            — no REST API
+#   security_expert         — no auth/secrets management in scope
+
+ai_personas:
+  enabled:
+    - typescript_reviewer
+    - documentation_expert
+    - technical_writer
+    - test_engineer
+    - code_quality_analyst
+    - architecture_reviewer
+    - devops_engineer
+    - dependency_analyst
+    - git_specialist
+    - async_performance_engineer
+    - performance_engineer
+  disabled:
+    - prompt_engineer
+    - ux_analyst
+    - accessibility_expert
+    - aws_serverless_engineer
+    - api_designer
+    - security_expert
+
+
 workflow:
+  settings:
+    auto_mode: false
+    parallel_execution: true
+    smart_execution: true
+    ml_optimize: false
+    multi_stage: false
+    auto_commit: false
+
+  # Legacy stage shortcuts (kept for backwards compatibility)
   stages:
     quick:
       enabled: true
-      steps:
-        - step_00  # pre-analysis / environment scan
-        - step_01  # documentation analysis
-        - step_02  # consistency analysis
+      steps: [step_00, step_01, step_02]
     medium:
       enabled: true
-      steps:
-        - step_00  # pre-analysis / environment scan
-        - step_01  # documentation analysis
-        - step_02  # consistency analysis
-        - step_03  # script reference analysis
-        - step_04  # config validation
-        - step_05  # directory structure validation
+      steps: [step_00, step_01, step_02, step_03, step_04, step_05]
     full:
       enabled: true
-      steps:
-        - step_00  # pre-analysis / environment scan
-        - step_01  # documentation analysis
-        - step_02  # consistency analysis
-        - step_03  # script reference analysis
-        - step_04  # config validation
-        - step_05  # directory structure validation
-        - step_06  # integration tests (type-check)
-        - step_07  # coverage report generation
-        - step_08  # release readiness check
-        - step_0f  # artifact commit: versions and commits all workflow outputs
+      steps: [step_00, step_0b, step_01, step_02, step_02_5, step_03, step_04, step_05, step_06, step_07, step_08, step_09, step_10, step_13, step_19, step_20, step_11, step_16, step_17, step_0f, step_12]
 
+  steps:
+
+    # PRE-PROCESSING
+    - id: step_00
+      name: "Pre-Analysis"
+      file: "step_00.js"
+      description: "Analyze TUI tool project structure, detect log file changes, and determine workflow scope for Ink/React components"
+      phase: 1
+      enabled: true
+      can_parallelize: false
+      dependencies: []
+      ai_persona: architecture_reviewer
+
+    # BOOTSTRAP DOCUMENTATION
+    - id: step_0b
+      name: "Bootstrap Documentation"
+      file: "step_0b.js"
+      description: "Generate initial documentation for undocumented or poorly documented modules"
+      phase: 1
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_00]
+      ai_persona: technical_writer
+
+    # DOCUMENTATION & ANALYSIS
+    - id: step_01
+      name: "Documentation Updates"
+      file: "step_01.js"
+      description: "Review and update ARCHITECTURE, FUNCTIONAL_REQUIREMENTS, and README for changed modules"
+      phase: 1
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_00]
+      ai_persona: documentation_expert
+
+    - id: step_02
+      name: "Consistency Analysis"
+      file: "step_02.js"
+      description: "Check cross-reference consistency between docs, type definitions, and source"
+      phase: 1
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_01]
+      ai_persona: documentation_expert
+
+    - id: step_02_5
+      name: "Documentation Optimization"
+      file: "step_02_5.js"
+      description: "Optimize and consolidate documentation structure"
+      phase: 1
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_02]
+      ai_persona: technical_writer
+
+    - id: step_03
+      name: "Script References"
+      file: "step_03.js"
+      description: "Validate npm scripts, tsc build commands, and tsx runtime references"
+      phase: 1
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_02]
+      ai_persona: devops_engineer
+
+    # STRUCTURE & CONFIG VALIDATION
+    - id: step_04
+      name: "Config Validation"
+      file: "step_04.js"
+      description: "Validate tsconfig.json, package.json, jest.config.ts, and tsx runtime configuration"
+      phase: 1
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_00]
+      ai_persona: devops_engineer
+
+    - id: step_05
+      name: "Directory Structure"
+      file: "step_05.js"
+      description: "Validate src/, test/ structure and Ink component organization"
+      phase: 1
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_04]
+      ai_persona: architecture_reviewer
+
+    # TESTING PHASE
+    - id: step_06
+      name: "Test Review"
+      file: "step_06.js"
+      description: "Review jest/ts-jest test coverage for log parsing and TUI components"
+      phase: 2
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_05]
+      ai_persona: test_engineer
+
+    - id: step_07
+      name: "Test Generation"
+      file: "step_07.js"
+      description: "Generate missing unit tests for log analysis pipeline and Ink components"
+      phase: 2
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_06]
+      ai_persona: test_engineer
+
+    - id: step_08
+      name: "Test Execution"
+      file: "step_08.js"
+      description: "Execute jest test suite and validate coverage thresholds"
+      phase: 2
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_07]
+      ai_persona: test_engineer
+
+    # QUALITY PHASE
+    - id: step_09
+      name: "Dependency Analysis"
+      file: "step_09.js"
+      description: "Audit npm dependencies including Ink, ts-jest, and Copilot SDK compatibility"
+      phase: 2
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_08]
+      ai_persona: dependency_analyst
+
+    - id: step_10
+      name: "Code Quality"
+      file: "step_10.js"
+      description: "Run ESLint, check TypeScript strict mode compliance, review code quality patterns"
+      phase: 2
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_09]
+      ai_persona: code_quality_analyst
+
+    # SPECIALIZED ANALYSIS
+    - id: step_13
+      name: "Markdown Lint"
+      file: "step_13.js"
+      description: "Lint and fix markdown documentation files"
+      phase: 2
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_10]
+      ai_persona: technical_writer
+
+    - id: step_19
+      name: "TypeScript Review"
+      file: "step_19.js"
+      description: "Review TypeScript patterns, Ink/React types, and tsx runtime compatibility"
+      phase: 2
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_10]
+      ai_persona: typescript_reviewer
+
+    - id: step_20
+      name: "Async Performance Review"
+      file: "step_20.js"
+      description: "Review async/await patterns, Promise handling, and streaming JSON processing in log analysis pipeline"
+      phase: 2
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_10]
+      ai_persona: async_performance_engineer
+
+    - id: step_22
+      name: "Accessibility Review"
+      file: "step_22.js"
+      description: "HTML/CSS accessibility review for web-facing components"
+      phase: 2
+      enabled: false
+      reason: "TypeScript terminal TUI (Ink) — no HTML/CSS layer; not a web application"
+      can_parallelize: true
+      dependencies: [step_13]
+      ai_persona: accessibility_expert
+
+    - id: step_23
+      name: "Performance Review"
+      file: "step_23.js"
+      description: "Performance review: log file parsing throughput, AI analysis pipeline latency, JSON streaming performance, Copilot SDK response handling"
+      phase: 2
+      enabled: true
+      can_parallelize: true
+      dependencies: [step_13]
+      ai_persona: performance_engineer
+
+    # CONTEXT ANALYSIS
+    - id: step_11
+      name: "Context Analysis"
+      file: "step_11.js"
+      description: "Analyze project context, cross-module relationships, and log analysis architecture"
+      phase: 2
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_10]
+      ai_persona: architecture_reviewer
+
+    # FINALIZATION
+    - id: step_16
+      name: "Version Update"
+      file: "step_16.js"
+      description: "Update version in package.json and CHANGELOG.md"
+      phase: 2
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_11]
+      ai_persona: devops_engineer
+
+    - id: step_17
+      name: "Workflow Summary"
+      file: "step_17.js"
+      description: "Generate workflow execution summary and metrics report"
+      phase: 2
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_16]
+      ai_persona: technical_writer
+
+    # GIT FINALIZATION
+    - id: step_0f
+      name: "Commit Artifacts"
+      file: "step_0f.js"
+      description: "Commit workflow artifacts, docs, and generated files"
+      phase: 3
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_17]
+      ai_persona: git_specialist
+
+    # Git Finalization MUST BE LAST
+    - id: step_12
+      name: "Git Finalization"
+      file: "step_12.js"
+      description: "Stage, commit, and push with conventional commit message"
+      phase: 3
+      enabled: true
+      can_parallelize: false
+      dependencies: [step_0f]
+      ai_persona: git_specialist
 validation:
   documentation:
     required: true
