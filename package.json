@@ -1,6 +1,6 @@
 {
   "name": "ai-workflow-log-analyzer",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Developer-facing interactive TUI tool for internal contributors to analyze ai_workflow.js execution logs — surfaces failures, bugs, prompt quality issues, and performance regressions using the GitHub Copilot SDK",
   "type": "module",
   "main": "dist/index.js",
@@ -24,6 +24,9 @@
     "dev": "tsx src/bin/analyze-logs.ts",
     "start": "tsx src/bin/analyze-logs.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:ci": "npm test -- --runInBand",
+    "verify": "npm run lint && npm run type:check && npm run build && npm run test:ci",
+    "test:docker": "docker build --target verify --tag ai-workflow-log-analyzer:verify . && docker run --rm ai-workflow-log-analyzer:verify",
     "test:watch": "npm test -- --watch",
     "test:coverage": "npm test -- --coverage",
     "type:check": "tsc --noEmit",
@@ -62,6 +65,7 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.120",
     "@github/copilot-sdk": "^0.1.32",
     "chalk": "^5.4.1",
     "commander": "^14.0.3",
@@ -76,12 +80,13 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.4.0",
     "@types/react": "^19.1.8",
-    "eslint": "^10.0.3",
+    "eslint": "^10.1.0",
     "globals": "^17.4.0",
     "ink-testing-library": "^4.0.0",
     "jest": "^30.3.0",
     "markdownlint-cli": "^0.48.0",
     "ts-jest": "^29.4.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.58.1"
   }
 }

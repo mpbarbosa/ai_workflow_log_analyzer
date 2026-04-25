@@ -95,19 +95,41 @@ In split view, pressing `[z]` shall zoom the focused pane to full screen. `[z]` 
 
 Pressing `[s]` on any open file shall activate Parts view: a 28-column navigable section list on the left and the selected section's content (rendered as markdown) on the right. `[↑↓]` navigates sections.
 
-### FR-3.7 — Prompt Part Analysis
+### FR-3.7 — Prompt Part Codebase Analysis
 
 Pressing `[a]` in Parts view shall send the selected section's content and relevant codebase context to the Copilot SDK for analysis. Results shall stream into an overlay and be saved to disk upon completion.
 
-### FR-3.8 — Analysis File Persistence
+### FR-3.8 — Prompt Part Reverse Prompting
+
+Pressing `[b]` in Parts view shall send the selected section's content to the
+Copilot SDK for reverse-prompting analysis. The response shall deconstruct the
+section's tone, pacing, structure, density, and formatting, then synthesize a
+reusable master prompt. Results shall stream into an overlay and be saved to
+disk upon completion.
+
+### FR-3.9 — Analysis File Persistence
 
 Completed part analyses shall be saved to:
 
 ```text
-<projectRoot>/.ai_workflow/analysis/<runId>/part_<label>_<timestamp>.md
+<projectRoot>/.ai_workflow/analysis/<runId>/{part|reverse_prompt}_<label>_<timestamp>.md
 ```
 
 The `analysis/<runId>/` folder shall be created automatically if it does not exist. The saved file path shall be shown in the overlay footer.
+
+### FR-3.10 — Prompt Response Issue Fix
+
+When a prompt log file is open in Files mode, pressing `[f]` shall inspect the
+prompt response for concrete, actionable issues and launch a Copilot skill that
+fixes those issues in the repository associated with that log file.
+
+If no actionable issues are found, the TUI shall show a lightweight notice and shall not open an interactive Copilot session.
+
+### FR-3.11 — Prompt Folder Analysis
+
+When a prompt log file is open in Files mode, pressing `[d]` shall launch an interactive Copilot session that analyzes the open file's immediate parent folder.
+
+The folder-analysis prompt shall stay scoped to that parent folder, cite the prompt-log files within it, and distinguish confirmed issues from inconclusive observations and expected historical drift.
 
 ---
 
@@ -167,27 +189,31 @@ The CLI shall support `--skip-prompt-quality` (faster, no SDK) and `--skip-summa
 
 ---
 
-## Roadmap Minor Issues
+## Roadmap — Minor Issues
 
 Issues identified during automated log audits and addressed outside of versioned releases.
 
-| ID     | Description                                         | Priority | Status |
-|--------|-----------------------------------------------------|----------|--------|
-| RI-001 | Test suites failed to run: jest.mock() in ESM mode  | Medium   | Done   |
-| RI-002 | `.github/skills/` directory undocumented            | Medium   | Done   |
-| RI-003 | Markdownlint not configured; 152 violations unfixed | Medium   | Done   |
-| RI-004 | Sequential await in `analyzeAllPrompts`             | Low      | Done   |
-| RI-005 | MD031/MD040 violations in ARCHITECTURE.md           | Low      | Done   |
-| RI-006 | MD031/MD013 violations in CONTRIBUTING.md           | Low      | Done   |
-| RI-007 | MD024 duplicate heading in GETTING_STARTED.md       | Low      | Done   |
-| RI-008 | Use `toHaveLength` instead of `.length).toBe` in tests | Low   | Done   |
-| RI-009 | Persist rendered prompts directory path in run log output for prompt-part investigations | Low | Open |
-| RI-010 | Define a machine-readable analyzer-prompt metadata contract before any extraction to `ai_workflow_core` (`domain`, `intended_consumers`, `required_inputs`, `output_contract`, `repository_assumptions`, `stability`, `owner`) | Medium | Open |
-| RI-011 | Add a dedicated analyzer-prompt catalog in `ai_workflow_core` instead of forcing analyzer SDK prompts into the existing `ai_helpers.yaml` workflow-persona model | Medium | Open |
-| RI-012 | Add typed loader/filtering in `ai_workflow_core` so consumers can resolve only prompts explicitly compatible with their project and input/output contracts | Medium | Open |
-| RI-013 | Extract only the reusable analyzer prompts (`SYSTEM_PROMPT_QUALITY`, `SYSTEM_SUMMARIZE`) after the metadata contract and dedicated catalog exist | Medium | Open |
-| RI-014 | Keep analyzer-local prompts (`SYSTEM_ANALYZE_PART`, TUI issue-analysis prompts, and `App.tsx` `ai_workflow.js` handoff instructions) in this repository and document that boundary explicitly | Medium | Open |
+> Populated by the `fix-log-issues` skill. Each item was verified against the live codebase before being marked done or left open for follow-up.
+
+| ID | Source step | Description | File / Path | Priority | Status |
+|----|-------------|-------------|-------------|----------|--------|
+| RI-001 | step_08 | Test suites failed to run: `jest.mock()` in ESM mode | test/ | Medium | done |
+| RI-002 | step_05 | `.github/skills/` directory undocumented | .github/SKILLS.md | Medium | done |
+| RI-003 | step_13 | Markdownlint not configured; 152 violations unfixed | package.json | Medium | done |
+| RI-004 | step_20 | Sequential await in `analyzeAllPrompts` | src/analyzers/prompt_quality_analyzer.ts | Low | done |
+| RI-005 | step_10 | MD031/MD040 violations in `ARCHITECTURE.md` | ARCHITECTURE.md | Low | done |
+| RI-006 | step_10 | MD031/MD013 violations in `CONTRIBUTING.md` | CONTRIBUTING.md | Low | done |
+| RI-007 | step_10 | MD024 duplicate heading in `GETTING_STARTED.md` | GETTING_STARTED.md | Low | done |
+| RI-008 | step_06 | Use `toHaveLength` instead of `.length).toBe` in tests | test/analyzers/analyzers.test.ts | Low | done |
+| RI-009 | step_23 | Persist rendered prompts directory path in run log output for prompt-part investigations | .ai_workflow/logs/ | Low | open |
+| RI-010 | step_23 | Define a machine-readable analyzer-prompt metadata contract before any extraction to `ai_workflow_core` (`domain`, `intended_consumers`, `required_inputs`, `output_contract`, `repository_assumptions`, `stability`, `owner`) | ai_workflow_core | Medium | open |
+| RI-011 | step_23 | Add a dedicated analyzer-prompt catalog in `ai_workflow_core` instead of forcing analyzer SDK prompts into the existing `ai_helpers.yaml` workflow-persona model | ai_workflow_core | Medium | open |
+| RI-012 | step_23 | Add typed loader/filtering in `ai_workflow_core` so consumers can resolve only prompts explicitly compatible with their project and input/output contracts | ai_workflow_core | Medium | open |
+| RI-013 | step_23 | Extract only the reusable analyzer prompts (`SYSTEM_PROMPT_QUALITY`, `SYSTEM_SUMMARIZE`) after the metadata contract and dedicated catalog exist | src/lib/copilot_client.ts | Medium | open |
+| RI-014 | step_23 | Keep analyzer-local prompts (`SYSTEM_ANALYZE_PART`, TUI issue-analysis prompts, and `App.tsx` `ai_workflow.js` handoff instructions) in this repository and document that boundary explicitly | src/lib/copilot_client.ts | Medium | open |
+| RI-015 | step_13 | Duplicate changelog subsection heading | CHANGELOG.md | Low | done |
+| RI-016 | step_10 | File tree hook masks filesystem errors instead of surfacing them | src/tui/hooks/useFileTree.ts | Medium | done |
 
 ---
 
-*Applies to **v0.2.3**. Update this line whenever the package version is bumped.*
+*Applies to **v0.3.0**. Update this line whenever the package version is bumped.*

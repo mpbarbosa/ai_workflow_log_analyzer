@@ -205,7 +205,7 @@ export async function summarizeReport(reportJson: string): Promise<string> {
   return result.content;
 }
 
-// ─── Prompt part vs codebase analysis ────────────────────────────────────────
+// ─── Prompt part analysis ────────────────────────────────────────────────────
 
 const SYSTEM_ANALYZE_PART = `You are a senior code reviewer and prompt engineer analyzing whether a specific section of an AI workflow prompt is well-aligned with the actual project codebase.
 
@@ -280,9 +280,11 @@ You will be given:
 
   **Important for Task sections**: The CODEBASE CONTEXT is the TARGET project being
   validated or reviewed by the AI workflow. The validation/analysis code itself lives
-  in a separate \`ai_workflow.js\` system and is NOT expected to appear in the target
-  project's source files. Absence of validation scripts, analyzers, or workflow logic
-  in the codebase context is normal and must NOT be flagged as a misalignment.
+  in a separate \`ai_workflow.js\` system, and the workflow prompt templates are hosted
+  in the \`/home/mpb/Documents/GitHub/ai_workflow.js\` repository/folder rather than in
+  the target project's source tree. Absence of validation scripts, analyzers, workflow
+  logic, or prompt-template source files in the codebase context is normal and must NOT
+  be flagged as a misalignment.
 
   Task sections may organize their body with \`### Heading\` markdown headings (e.g.
   "### Configuration Files in Scope", "### Project Context"). These are sub-sections
@@ -307,6 +309,17 @@ You will be given:
 
 Only finding type 1 should materially reduce the alignment score. Do not deduct more
 than 1–2 points solely because a claim cannot be verified from the truncated context.
+
+**Historical-artifact rule**:
+- Some prompt logs describe an earlier repository snapshot than the live codebase you are comparing against.
+- A later version bump, changelog entry, or documentation refresh in the live repository is **not** by itself a prompt flaw or mismatch.
+- Only flag version drift when the section itself claims contemporaneous parity between two artifacts that should match at the same time, or when the prompt embeds evidence proving the mismatch existed in the analyzed snapshot.
+- Prefer wording such as "historical drift" or "expected repo evolution" over "mismatch" when the only disagreement is that the repository changed after the prompt was generated.
+
+**Completeness rule**:
+- If SECTION CONTENT visibly contains truncation markers, clipped file contents, placeholder omissions, or partial batches, do not treat downstream success claims as fully validated.
+- In that case, focus findings on over-claiming from incomplete evidence and mark the missing checks as inconclusive or unavailable.
+- Do not reward or repeat unsupported positive claims (for example: "all files validated successfully", "version badges are present", or "terminology is consistent") unless the provided text explicitly shows the supporting evidence.
 
 **Recommendation discipline**:
 - Be assertive. Do not hedge with "optionally", "consider", "may want to", or similar phrasing.
@@ -342,6 +355,57 @@ One-paragraph assessment of how well this section aligns with the codebase.
 ## Suggestions
 1. Specific improvement to the prompt section
 2. ...`;
+
+export function buildPromptPartAnalysisSystemPrompt(): string {
+  return SYSTEM_ANALYZE_PART;
+}
+
+const SYSTEM_REVERSE_PROMPT_PART = `<System>
+You are an Expert Prompt Engineer and Linguistic Forensic Analyst. Your specialty is "Reverse Prompting"—the art of deconstructing a finished piece of content to uncover the precise instructions, constraints, and contextual nuances required to generate it from scratch. You operate with a deep understanding of natural language processing, cognitive psychology, and structural heuristics.
+</System>
+<Context>
+The user has provided a "Gold Standard" example of content, a specific problem, or a successful use case. They need an AI prompt that can replicate this exact quality, style, and depth. You are in a high-stakes environment where precision in tone, pacing, and formatting is non-negotiable for professional-grade automation.
+</Context>
+<Instructions>
+1. **Initial Forensic Audit**: Scan the user-provided text/case. Identify the primary intent and the secondary emotional drivers.
+2. **Dimension Analysis**: Deconstruct the input across these specific pillars:
+- **Tone & Voice**: (e.g., Authoritative yet empathetic, satirical, clinical)
+- **Pacing & Rhythm**: (e.g., Short punchy sentences, flowing narrative, rhythmic complexity)
+- **Structure & Layout**: (e.g., Inverted pyramid, modular blocks, nested lists)
+- **Depth & Information Density**: (e.g., High-level overview vs. granular technical detail)
+- **Formatting Nuances**: (e.g., Markdown usage, specific capitalization patterns, punctuation quirks)
+- **Emotional Intention**: What should the reader feel? (e.g., Urgency, trust, curiosity)
+3. **Synthesis**: Translate these observations into a "Master Prompt" using the structured format: <System>, <Context>, <Instructions>, <Constraints>, <Output Format>.
+4. **Validation**: Review the generated prompt against the original example to ensure no stylistic nuance was lost.
+</Instructions>
+<Constraints>
+- Avoid generic descriptions like "professional" or "creative"; use hyper-specific descriptors (e.g., "Wall Street Journal editorial style" or "minimalist Zen-like prose").
+- The generated prompt must be "executable" as a standalone instruction set.
+- Maintain the original's density; do not over-simplify or over-complicate.
+</Constraints>
+<Output Format>
+Follow this exact layout for the final output:
+### Part 1: Linguistic Analysis
+[Detailed breakdown of the identified Tone, Pacing, Structure, and Intent]
+
+### Part 2: The Generated Master Prompt
+\`\`\`xml
+[Insert the fully engineered prompt here]
+\`\`\`
+
+### Part 3: Execution Advice
+[Advice on which LLM models work best for this prompt and suggested temperature/top-p settings]
+</Output Format>
+<Reasoning>
+Apply Theory of Mind to analyze the logic behind the original author's choices. Use Strategic Chain-of-Thought to map the path from the original text's "effect" back to the "cause" (the instructions). Ensure the generated prompt accounts for edge cases where the AI might deviate from the desired style.
+</Reasoning>
+<User Input>
+Please paste the "Gold Standard" text, the specific issue, or the use case you want to reverse-engineer. Provide any additional context about the target audience or the specific platform where this content will be used.
+</User Input>`;
+
+export function buildReversePromptPartAnalysisSystemPrompt(): string {
+  return SYSTEM_REVERSE_PROMPT_PART;
+}
 
 /**
  * Reads project source and documentation files for codebase context.
@@ -425,9 +489,60 @@ export async function* analyzePromptPartVsCodebase(
   signal?: AbortSignal
 ): AsyncGenerator<StreamChunk> {
   const codebaseContext = await readCodebaseContext(projectRoot);
+  const userPrompt = buildPromptPartAnalysisUserPrompt(label, lines, codebaseContext);
+
+  yield* streamLLM(
+    { prompt: userPrompt, systemMessage: SYSTEM_ANALYZE_PART, model: 'gpt-4.1' },
+    signal
+  );
+}
+
+/**
+ * Streams a reverse-prompting analysis of the given prompt part.
+ *
+ * @param label  - Section label (e.g. "Task", "Constraints")
+ * @param lines  - Raw content lines of the section
+ * @param signal - Optional AbortSignal to cancel mid-stream
+ */
+export async function* analyzePromptPartWithReversePrompting(
+  label: string,
+  lines: string[],
+  signal?: AbortSignal
+): AsyncGenerator<StreamChunk> {
+  const userPrompt = buildReversePromptPartAnalysisUserPrompt(label, lines);
+
+  yield* streamLLM(
+    { prompt: userPrompt, systemMessage: SYSTEM_REVERSE_PROMPT_PART, model: 'gpt-4.1' },
+    signal
+  );
+}
+
+/**
+ * Streams a reverse-prompting analysis of an entire structured prompt.
+ *
+ * @param lines  - Raw lines of the full prompt text
+ * @param signal - Optional AbortSignal to cancel mid-stream
+ */
+export async function* analyzeWholePromptWithReversePrompting(
+  lines: string[],
+  signal?: AbortSignal
+): AsyncGenerator<StreamChunk> {
+  const userPrompt = buildReversePromptWholeAnalysisUserPrompt(lines);
+
+  yield* streamLLM(
+    { prompt: userPrompt, systemMessage: SYSTEM_REVERSE_PROMPT_PART, model: 'gpt-4.1' },
+    signal
+  );
+}
+
+export function buildPromptPartAnalysisUserPrompt(
+  label: string,
+  lines: string[],
+  codebaseContext: string
+): string {
   const sectionContent = lines.join('\n').trim();
 
-  const userPrompt = `**SECTION LABEL**: ${label}
+  return `**SECTION LABEL**: ${label}
 
 **SECTION CONTENT**:
 ${sectionContent.slice(0, 2000)}
@@ -436,9 +551,42 @@ ${sectionContent.slice(0, 2000)}
 \`\`\`typescript
 ${codebaseContext}
 \`\`\``;
+}
 
-  yield* streamLLM(
-    { prompt: userPrompt, systemMessage: SYSTEM_ANALYZE_PART, model: 'gpt-4.1' },
-    signal
-  );
+export function buildReversePromptPartAnalysisUserPrompt(
+  label: string,
+  lines: string[]
+): string {
+  const sectionContent = lines.join('\n').trim();
+
+  return `You are reverse-engineering a structured prompt section extracted from an AI workflow log.
+
+**SECTION LABEL**: ${label}
+
+**GOLD STANDARD TEXT**:
+${sectionContent.slice(0, 4000)}
+
+**ADDITIONAL CONTEXT**:
+- Treat the selected section text above as the "Gold Standard" example to reverse-engineer.
+- This is a single named part from a larger prompt, so avoid assuming sibling sections unless they are explicitly referenced in the text.
+- Preserve the section's observed tone, pacing, structure, density, and formatting habits when synthesizing the master prompt.`;
+}
+
+/**
+ * Builds the user prompt for reverse-prompting an entire structured prompt.
+ */
+export function buildReversePromptWholeAnalysisUserPrompt(lines: string[]): string {
+  const promptContent = lines.join('\n').trim();
+
+  return `You are reverse-engineering an entire structured prompt extracted from an AI workflow log.
+
+**PROMPT SCOPE**: Whole Prompt
+
+**GOLD STANDARD TEXT**:
+${promptContent.slice(0, 4000)}
+
+**ADDITIONAL CONTEXT**:
+- Treat the full prompt text above as the "Gold Standard" example to reverse-engineer.
+- This text contains multiple coordinated sections, so preserve the relationships between role, context, instructions, constraints, and output contract.
+- Preserve the prompt's observed tone, pacing, structure, density, and formatting habits when synthesizing the master prompt.`;
 }

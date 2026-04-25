@@ -72,10 +72,16 @@ const SECTIONS: Section[] = [
       { key: 'Ctrl+U / D',   desc: 'Same as PgUp / PgDn' },
       { key: 'g',             desc: 'Jump to top of file' },
       { key: 'G',             desc: 'Jump to bottom of file' },
-      { key: 'p',             desc: 'Toggle Prompt/Response split view (prompt .md files only)' },
-      { key: 's',             desc: 'Toggle Prompt Parts view — sections list + content (any open file)' },
-      { key: 'a',             desc: 'Analyze selected part vs codebase — streams Copilot analysis, saved to .ai_workflow/analysis/ (Parts view only)' },
-      { key: 'x',             desc: 'Send analysis file to Copilot CLI — opens interactive [[PLAN]] session to fix reported issues (Parts view on .ai_workflow/analysis/ files only)' },
+      { key: 'c',             desc: "Run a consolidation analysis of the selected run's prompts/ log folder — opens interactive Copilot session (file viewer only)" },
+      { key: 'd',             desc: 'Analyze the open prompt log file\'s parent folder — opens interactive Copilot session (prompt .md files only)' },
+      { key: 'f',             desc: 'Extract actionable issues from the open prompt response and fix them with Copilot (prompt .md files only)' },
+       { key: 'p',             desc: 'Toggle Prompt/Response split view (prompt .md files only)' },
+       { key: 's',             desc: 'Toggle Prompt Parts view — sections list + content (any open file)' },
+       { key: 'a',             desc: 'Analyze selected part vs codebase — streams Copilot analysis, saved to .ai_workflow/analysis/ (Parts view only)' },
+       { key: 'b',             desc: 'Reverse-prompt the selected part — streams Copilot linguistic analysis and master-prompt synthesis, saved to .ai_workflow/analysis/ (Parts view only)' },
+       { key: 'e',             desc: 'Reverse-prompt the whole prompt — streams Copilot linguistic analysis and master-prompt synthesis for the current prompt log, saved to .ai_workflow/analysis/ (Parts view on prompt .md files only)' },
+       { key: 'g',             desc: 'Validate the open prompt log file against the current project codebase with historical-log-aware rules — opens interactive Copilot session (Parts view on prompt .md files only)' },
+       { key: 'x',             desc: 'Send analysis file to Copilot CLI — opens interactive [[PLAN]] session to fix reported issues (Parts view on .ai_workflow/analysis/ files only)' },
       { key: 'z',             desc: 'Zoom focused pane full-screen / zoom out (in split view)' },
       { key: 'Tab',           desc: 'Switch focus: Prompt pane ↔ Response pane (works in split and zoom)' },
       { key: 'Esc',           desc: 'Close file viewer / cancel analysis, return to tree' },
@@ -114,8 +120,8 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
           <Box paddingX={2}>
             <Text bold color={section.color}>{section.title}</Text>
           </Box>
-          {section.keys.map((k) => (
-            <Row key={k.key} keyStr={k.key} desc={k.desc} />
+          {section.keys.map((k, index) => (
+            <Row key={`${section.title}:${k.key}:${index}`} keyStr={k.key} desc={k.desc} />
           ))}
         </Box>
       ))}

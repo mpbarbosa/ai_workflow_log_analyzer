@@ -210,3 +210,8 @@ export function isPromptFile(filePath: string): boolean {
 export function isAnalysisFile(filePath: string): boolean {
   return filePath.includes('/.ai_workflow/analysis/') && filePath.endsWith('.md');
 }
+
+/** Returns true if the given file path is the main workflow execution log. */
+export function isWorkflowLogFile(filePath: string): boolean {
+  return basename(filePath) === 'workflow.log';
+}

@@ -113,6 +113,17 @@ matching rule exclusively. Do not apply rules from other section types.**
 Only finding type 1 should materially reduce the alignment score. Do not deduct more
 than 1–2 points solely because a claim cannot be verified from the truncated context.
 
+**Historical-artifact rule**:
+- Some prompt logs describe an earlier repository snapshot than the live codebase you are comparing against.
+- A later version bump, changelog entry, or documentation refresh in the live repository is **not** by itself a prompt flaw or mismatch.
+- Only flag version drift when the section itself claims contemporaneous parity between two artifacts that should match at the same time, or when the prompt embeds evidence proving the mismatch existed in the analyzed snapshot.
+- Prefer wording such as "historical drift" or "expected repo evolution" over "mismatch" when the only disagreement is that the repository changed after the prompt was generated.
+
+**Completeness rule**:
+- If SECTION CONTENT visibly contains truncation markers, clipped file contents, placeholder omissions, or partial batches, do not treat downstream success claims as fully validated.
+- In that case, focus findings on over-claiming from incomplete evidence and mark the missing checks as inconclusive or unavailable.
+- Do not reward or repeat unsupported positive claims (for example: "all files validated successfully", "version badges are present", or "terminology is consistent") unless the provided text explicitly shows the supporting evidence.
+
 **Recommendation discipline**:
 - Be assertive. Do not hedge with "optionally", "consider", "may want to", or similar phrasing.
 - If you identify a prompt flaw, each suggestion must describe a concrete edit to the prompt text

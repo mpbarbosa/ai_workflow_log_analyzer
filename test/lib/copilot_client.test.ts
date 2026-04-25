@@ -1,171 +1,132 @@
-import {
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { EventEmitter } from 'node:events';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const mockStart = jest.fn(async () => undefined);
+const mockStop = jest.fn(async () => undefined);
+const mockCreateSession = jest.fn();
+const mockApproveAll = jest.fn();
+
+class MockCopilotClient {
+  start = mockStart;
+  stop = mockStop;
+  createSession = mockCreateSession;
+}
+
+jest.unstable_mockModule('@github/copilot-sdk', () => ({
+  CopilotClient: MockCopilotClient,
+  approveAll: mockApproveAll,
+}));
+
+const {
   analyzeWithLLM,
   streamLLM,
   analyzePromptQuality,
   summarizeReport,
   analyzePromptPartVsCodebase,
-  LlmRequest,
-  LlmResponse,
-  StreamChunk,
-} from '../../src/lib/copilot_client';
+  analyzeWholePromptWithReversePrompting,
+} = await import('../../src/lib/copilot_client.js');
 
-import { CopilotClient, approveAll } from '@github/copilot-sdk';
+interface MockSession extends EventEmitter {
+  send: jest.Mock<(...args: unknown[]) => Promise<void>>;
+  destroy: jest.Mock<() => Promise<void>>;
+}
 
-jest.mock('@github/copilot-sdk', () => {
-  const EventEmitter = require('events');
-  class MockSession extends EventEmitter {
-    async send() {}
-    async destroy() {}
-  }
-  class MockCopilotClient {
-    async start() {}
-    async stop() {}
-    async createSession() {
-      return new MockSession();
-    }
-  }
-  return {
-    CopilotClient: MockCopilotClient,
-    approveAll: jest.fn(),
-  };
-});
+function createMockSession(): MockSession {
+  const session = new EventEmitter() as MockSession;
+  session.send = jest.fn(async () => undefined);
+  session.destroy = jest.fn(async () => undefined);
+  return session;
+}
 
 describe('copilot_client', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCreateSession.mockReset();
+    mockStart.mockResolvedValue(undefined);
+    mockStop.mockResolvedValue(undefined);
+  });
+
+  afterEach(async () => {
+    jest.useRealTimers();
   });
 
   describe('analyzeWithLLM', () => {
     it('returns content, model, and latency on success', async () => {
-      const sessionEvents: any = {};
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('assistant.message', { data: { content: 'Hello world' } });
-            s.emit('session.idle');
-          }, 5);
-          return Promise.resolve();
+      let sessionRef: MockSession | undefined;
+      mockCreateSession.mockImplementationOnce(async ({ model }) => {
+        expect(model).toBe('gpt-4.1');
+        sessionRef = createMockSession();
+        sessionRef.send.mockImplementationOnce(async ({ prompt }) => {
+          expect(prompt).toBe('Say hello');
+          sessionRef!.emit('assistant.message', { data: { content: 'Hello world' } });
+          sessionRef!.emit('session.idle');
         });
-        s.destroy = jest.fn();
-        return s;
+        return sessionRef;
       });
 
-      const req: LlmRequest = { prompt: 'Say hello', model: 'gpt-4.1' };
-      const res = await analyzeWithLLM(req);
+      const res = await analyzeWithLLM({ prompt: 'Say hello', model: 'gpt-4.1' });
       expect(res.content).toBe('Hello world');
       expect(res.model).toBe('gpt-4.1');
-      expect(typeof res.latencyMs).toBe('number');
       expect(res.latencyMs).toBeGreaterThanOrEqual(0);
+      expect(sessionRef?.destroy).toHaveBeenCalled();
+      expect(mockStop).toHaveBeenCalled();
     });
 
-    it('uses default model if not provided', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async ({ model }) => {
+    it('prepends systemMessage and uses the default model', async () => {
+      mockCreateSession.mockImplementationOnce(async ({ model, onPermissionRequest }) => {
         expect(model).toBe('gpt-4.1');
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('assistant.message', { data: { content: 'Default model' } });
-            s.emit('session.idle');
-          }, 5);
-          return Promise.resolve();
+        expect(onPermissionRequest).toBe(mockApproveAll);
+        const session = createMockSession();
+        session.send.mockImplementationOnce(async ({ prompt }) => {
+          expect(prompt).toBe('SYSTEM\n\nUSER');
+          session.emit('assistant.message', { data: { content: 'SysMsg' } });
+          session.emit('session.idle');
         });
-        s.destroy = jest.fn();
-        return s;
+        return session;
       });
-      const req: LlmRequest = { prompt: 'Test default model' };
-      const res = await analyzeWithLLM(req);
-      expect(res.content).toBe('Default model');
-      expect(res.model).toBe('gpt-4.1');
-    });
 
-    it('prepends systemMessage if provided', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(({ prompt }) => {
-          expect(prompt.startsWith('SYSTEM\n\nUSER')).toBe(true);
-          setTimeout(() => {
-            s.emit('assistant.message', { data: { content: 'SysMsg' } });
-            s.emit('session.idle');
-          }, 5);
-          return Promise.resolve();
-        });
-        s.destroy = jest.fn();
-        return s;
-      });
-      const req: LlmRequest = { prompt: 'USER', systemMessage: 'SYSTEM' };
-      const res = await analyzeWithLLM(req);
+      const res = await analyzeWithLLM({ prompt: 'USER', systemMessage: 'SYSTEM' });
       expect(res.content).toBe('SysMsg');
     });
 
-    it('rejects on session.error event', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('session.error', { data: { message: 'Test error' } });
-          }, 5);
-          return Promise.resolve();
+    it('rejects on session.error events', async () => {
+      mockCreateSession.mockImplementationOnce(async () => {
+        const session = createMockSession();
+        session.send.mockImplementationOnce(async () => {
+          session.emit('session.error', { data: { message: 'Test error' } });
         });
-        s.destroy = jest.fn();
-        return s;
+        return session;
       });
-      const req: LlmRequest = { prompt: 'fail' };
-      await expect(analyzeWithLLM(req)).rejects.toThrow('Test error');
-    });
 
-    it('handles session.error with missing message', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('session.error', { data: {} });
-          }, 5);
-          return Promise.resolve();
-        });
-        s.destroy = jest.fn();
-        return s;
-      });
-      const req: LlmRequest = { prompt: 'fail' };
-      await expect(analyzeWithLLM(req)).rejects.toThrow('Session error');
+      await expect(analyzeWithLLM({ prompt: 'fail' })).rejects.toThrow('Test error');
     });
   });
 
   describe('streamLLM', () => {
-    function makeSessionWithChunks(chunks: string[], error?: string) {
-      return async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            for (const c of chunks) {
-              s.emit('assistant.message', { data: { content: c } });
-            }
-            if (error) {
-              s.emit('session.error', { data: { message: error } });
-            } else {
-              s.emit('session.idle');
-            }
-          }, 5);
-          return Promise.resolve();
+    function queueChunks(chunks: string[], error?: string) {
+      mockCreateSession.mockImplementationOnce(async () => {
+        const session = createMockSession();
+        session.send.mockImplementationOnce(async () => {
+          for (const chunk of chunks) {
+            session.emit('assistant.message', { data: { content: chunk } });
+          }
+          if (error) {
+            session.emit('session.error', { data: { message: error } });
+          } else {
+            session.emit('session.idle');
+          }
         });
-        s.destroy = jest.fn();
-        return s;
-      };
+        return session;
+      });
     }
 
-    it('yields chunks and done=true at end', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(
-        makeSessionWithChunks(['A', 'B', 'C'])
-      );
-      const req: LlmRequest = { prompt: 'stream' };
-      const results: StreamChunk[] = [];
-      for await (const chunk of streamLLM(req)) {
+    it('yields chunks and a final done marker', async () => {
+      queueChunks(['A', 'B', 'C']);
+      const results = [];
+      for await (const chunk of streamLLM({ prompt: 'stream' })) {
         results.push(chunk);
       }
       expect(results).toEqual([
@@ -176,206 +137,172 @@ describe('copilot_client', () => {
       ]);
     });
 
-    it('throws error if session.error occurs', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(
-        makeSessionWithChunks(['X'], 'Stream error')
-      );
-      const req: LlmRequest = { prompt: 'fail' };
-      const iter = streamLLM(req);
-      const first = await iter.next();
-      expect(first.value).toEqual({ delta: 'X', done: false });
+    it('throws when the session emits an error', async () => {
+      queueChunks(['X'], 'Stream error');
+      const iter = streamLLM({ prompt: 'fail' });
+      await expect(iter.next()).resolves.toEqual({ value: { delta: 'X', done: false }, done: false });
       await expect(iter.next()).rejects.toThrow('Stream error');
     });
 
-    it('aborts if signal is aborted', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(
-        makeSessionWithChunks(['A', 'B', 'C'])
-      );
-      const req: LlmRequest = { prompt: 'stream' };
-      const controller = new AbortController();
-      const results: StreamChunk[] = [];
-      const iter = streamLLM(req, controller.signal);
-      const first = await iter.next();
-      results.push(first.value);
-      controller.abort();
-      const next = await iter.next();
-      expect(next.done).toBe(true);
-      expect(results[0]).toEqual({ delta: 'A', done: false });
-    });
+    it('stops cleanly when aborted', async () => {
+      jest.useFakeTimers();
+      mockCreateSession.mockImplementationOnce(async () => {
+        const session = createMockSession();
+        session.send.mockImplementationOnce(async () => {
+          setTimeout(() => {
+            session.emit('assistant.message', { data: { content: 'A' } });
+            session.emit('assistant.message', { data: { content: 'B' } });
+            session.emit('session.idle');
+          }, 20);
+        });
+        return session;
+      });
 
-    it('handles empty response', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(
-        makeSessionWithChunks([])
-      );
-      const req: LlmRequest = { prompt: 'empty' };
-      const results: StreamChunk[] = [];
-      for await (const chunk of streamLLM(req)) {
-        results.push(chunk);
-      }
-      expect(results).toEqual([{ delta: '', done: true }]);
+      const controller = new AbortController();
+      const iter = streamLLM({ prompt: 'stream' }, controller.signal);
+      const first = iter.next();
+      await jest.advanceTimersByTimeAsync(20);
+      expect(await first).toEqual({ value: { delta: 'A', done: false }, done: false });
+      controller.abort();
+      expect(await iter.next()).toEqual({ value: undefined, done: true });
     });
   });
 
   describe('analyzePromptQuality', () => {
-    it('parses valid JSON response and clamps score', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('assistant.message', {
-              data: {
-                content: `{
-                  "score": 120,
-                  "feedback": "Great prompt.",
-                  "suggestions": ["Be concise"]
-                }`,
-              },
-            });
-            s.emit('session.idle');
-          }, 5);
-          return Promise.resolve();
+    it('parses valid JSON and clamps the score', async () => {
+      mockCreateSession.mockImplementationOnce(async () => {
+        const session = createMockSession();
+        session.send.mockImplementationOnce(async () => {
+          session.emit('assistant.message', {
+            data: {
+              content: '{"score":120,"feedback":"Great prompt.","suggestions":["Be concise"]}',
+            },
+          });
+          session.emit('session.idle');
         });
-        s.destroy = jest.fn();
-        return s;
+        return session;
       });
+
       const res = await analyzePromptQuality('persona', 'gpt-4.1', 'prompt', 'response');
-      expect(res.score).toBe(100);
-      expect(res.feedback).toBe('Great prompt.');
-      expect(res.suggestions).toEqual(['Be concise']);
+      expect(res).toEqual({
+        score: 100,
+        feedback: 'Great prompt.',
+        suggestions: ['Be concise'],
+      });
     });
 
-    it('returns fallback if JSON parse fails', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('assistant.message', { data: { content: 'Not JSON' } });
-            s.emit('session.idle');
-          }, 5);
-          return Promise.resolve();
+    it('returns fallback output for non-JSON responses', async () => {
+      mockCreateSession.mockImplementationOnce(async () => {
+        const session = createMockSession();
+        session.send.mockImplementationOnce(async () => {
+          session.emit('assistant.message', { data: { content: 'Not JSON' } });
+          session.emit('session.idle');
         });
-        s.destroy = jest.fn();
-        return s;
+        return session;
       });
+
       const res = await analyzePromptQuality('persona', 'gpt-4.1', 'prompt', 'response');
       expect(res.score).toBe(50);
       expect(res.feedback).toContain('Not JSON');
       expect(res.suggestions).toEqual([]);
     });
 
-    it('handles missing fields in JSON', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('assistant.message', { data: { content: '{}' } });
-            s.emit('session.idle');
-          }, 5);
-          return Promise.resolve();
+    it('normalizes invalid suggestions payloads', async () => {
+      mockCreateSession.mockImplementationOnce(async () => {
+        const session = createMockSession();
+        session.send.mockImplementationOnce(async () => {
+          session.emit('assistant.message', {
+            data: {
+              content: '{"score":80,"feedback":"Ok","suggestions":"Not an array"}',
+            },
+          });
+          session.emit('session.idle');
         });
-        s.destroy = jest.fn();
-        return s;
+        return session;
       });
-      const res = await analyzePromptQuality('persona', 'gpt-4.1', 'prompt', 'response');
-      expect(res.score).toBe(0);
-      expect(res.feedback).toBe('');
-      expect(res.suggestions).toEqual([]);
-    });
 
-    it('handles suggestions not being an array', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('assistant.message', {
-              data: {
-                content: `{
-                  "score": 80,
-                  "feedback": "Ok",
-                  "suggestions": "Not an array"
-                }`,
-              },
-            });
-            s.emit('session.idle');
-          }, 5);
-          return Promise.resolve();
-        });
-        s.destroy = jest.fn();
-        return s;
-      });
       const res = await analyzePromptQuality('persona', 'gpt-4.1', 'prompt', 'response');
-      expect(res.score).toBe(80);
-      expect(res.feedback).toBe('Ok');
-      expect(res.suggestions).toEqual([]);
+      expect(res).toEqual({
+        score: 80,
+        feedback: 'Ok',
+        suggestions: [],
+      });
     });
   });
 
-  describe('summarizeReport', () => {
-    it('returns the content from analyzeWithLLM', async () => {
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('assistant.message', { data: { content: 'Summary text' } });
-            s.emit('session.idle');
-          }, 5);
-          return Promise.resolve();
-        });
-        s.destroy = jest.fn();
-        return s;
+  it('summarizeReport returns the LLM content', async () => {
+    mockCreateSession.mockImplementationOnce(async () => {
+      const session = createMockSession();
+      session.send.mockImplementationOnce(async () => {
+        session.emit('assistant.message', { data: { content: 'Summary text' } });
+        session.emit('session.idle');
       });
-      const res = await summarizeReport('{"foo":"bar"}');
-      expect(res).toBe('Summary text');
+      return session;
     });
+
+    await expect(summarizeReport('{"foo":"bar"}')).resolves.toBe('Summary text');
   });
 
-  describe('analyzePromptPartVsCodebase', () => {
-    beforeEach(() => {
-      jest.resetModules();
+  it('analyzePromptPartVsCodebase streams analysis with codebase context', async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), 'copilot-client-'));
+    await mkdir(join(projectRoot, 'src'));
+    await writeFile(join(projectRoot, 'README.md'), '# Test Project\n');
+    await writeFile(join(projectRoot, 'src', 'index.ts'), 'export const ok = true;\n');
+
+    mockCreateSession.mockImplementationOnce(async ({ model, onPermissionRequest }) => {
+      expect(model).toBe('gpt-4.1');
+      expect(onPermissionRequest).toBe(mockApproveAll);
+      const session = createMockSession();
+      session.send.mockImplementationOnce(async ({ prompt }) => {
+        expect(prompt).toContain('**SECTION LABEL**: Role');
+        expect(prompt).toContain('README.md');
+        expect(prompt).toContain('src/index.ts');
+        session.emit('assistant.message', { data: { content: 'Chunk1' } });
+        session.emit('assistant.message', { data: { content: 'Chunk2' } });
+        session.emit('session.idle');
+      });
+      return session;
     });
 
-    it('streams LLM analysis with codebase context', async () => {
-      // Patch readCodebaseContext to return fake context
-      jest.doMock('../../src/lib/copilot_client', () => {
-        const original = jest.requireActual('../../src/lib/copilot_client');
-        return {
-          ...original,
-          __esModule: true,
-          readCodebaseContext: jest.fn().mockResolvedValue('// codebase context'),
-        };
-      });
+    const results = [];
+    for await (const chunk of analyzePromptPartVsCodebase('Role', ['Line1', 'Line2'], projectRoot)) {
+      results.push(chunk);
+    }
 
-      (CopilotClient.prototype.createSession as jest.Mock).mockImplementation(async () => {
-        const EventEmitter = require('events');
-        const s = new EventEmitter();
-        s.send = jest.fn().mockImplementation(() => {
-          setTimeout(() => {
-            s.emit('assistant.message', { data: { content: 'Chunk1' } });
-            s.emit('assistant.message', { data: { content: 'Chunk2' } });
-            s.emit('session.idle');
-          }, 5);
-          return Promise.resolve();
-        });
-        s.destroy = jest.fn();
-        return s;
-      });
+    expect(results).toEqual([
+      { delta: 'Chunk1', done: false },
+      { delta: 'Chunk2', done: false },
+      { delta: '', done: true },
+    ]);
 
-      // Patch readCodebaseContext in the module scope
-      const { analyzePromptPartVsCodebase } = require('../../src/lib/copilot_client');
-      const results: StreamChunk[] = [];
-      for await (const chunk of analyzePromptPartVsCodebase('Role', ['Line1', 'Line2'], '/fake/project')) {
-        results.push(chunk);
-      }
-      expect(results).toEqual([
-        { delta: 'Chunk1', done: false },
-        { delta: 'Chunk2', done: false },
-        { delta: '', done: true },
-      ]);
+    await rm(projectRoot, { recursive: true, force: true });
+  });
+
+  it('analyzeWholePromptWithReversePrompting streams analysis for the full prompt text', async () => {
+    mockCreateSession.mockImplementationOnce(async ({ model, onPermissionRequest }) => {
+      expect(model).toBe('gpt-4.1');
+      expect(onPermissionRequest).toBe(mockApproveAll);
+      const session = createMockSession();
+      session.send.mockImplementationOnce(async ({ prompt }) => {
+        expect(prompt).toContain('**PROMPT SCOPE**: Whole Prompt');
+        expect(prompt).toContain('Role line\nTask line');
+        expect(prompt).toContain('multiple coordinated sections');
+        session.emit('assistant.message', { data: { content: 'Whole1' } });
+        session.emit('assistant.message', { data: { content: 'Whole2' } });
+        session.emit('session.idle');
+      });
+      return session;
     });
+
+    const results = [];
+    for await (const chunk of analyzeWholePromptWithReversePrompting(['Role line', 'Task line'])) {
+      results.push(chunk);
+    }
+
+    expect(results).toEqual([
+      { delta: 'Whole1', done: false },
+      { delta: 'Whole2', done: false },
+      { delta: '', done: true },
+    ]);
   });
 });

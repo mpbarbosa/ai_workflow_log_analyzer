@@ -1,71 +1,76 @@
-import * as api from '../src/index';
+import * as api from '../src/index.js';
 
 describe('ai_workflow_log_analyzer Public API (src/index.ts)', () => {
-  it('should export all expected modules and functions', () => {
+  it('exports the expected modules and functions', () => {
     expect(api).toHaveProperty('runAnalysisPipeline');
-    // Types are not present at runtime, but ensure main exports exist
-    expect(api).toHaveProperty('log_parser');
-    expect(api).toHaveProperty('prompt_parser');
-    expect(api).toHaveProperty('metrics_parser');
-    expect(api).toHaveProperty('failure_analyzer');
-    expect(api).toHaveProperty('performance_analyzer');
-    expect(api).toHaveProperty('bug_analyzer');
-    expect(api).toHaveProperty('prompt_quality_analyzer');
-    expect(api).toHaveProperty('json_reporter');
-    expect(api).toHaveProperty('markdown_reporter');
+    expect(api).toHaveProperty('parseRunLogsToArray');
+    expect(api).toHaveProperty('parseRunPrompts');
+    expect(api).toHaveProperty('parseMetrics');
+    expect(api).toHaveProperty('analyzeFailures');
+    expect(api).toHaveProperty('analyzePerformance');
+    expect(api).toHaveProperty('analyzeBugs');
+    expect(api).toHaveProperty('analyzeAllPrompts');
+    expect(api).toHaveProperty('toJson');
+    expect(api).toHaveProperty('toMarkdown');
   });
 
-  it('should not throw when importing the API', () => {
-    expect(() => require('../src/index')).not.toThrow();
+  it('imports the public API and submodules without error', async () => {
+    await expect(import('../src/index.js')).resolves.toBeDefined();
+    await expect(import('../src/parsers/log_parser.js')).resolves.toBeDefined();
+    await expect(import('../src/parsers/prompt_parser.js')).resolves.toBeDefined();
+    await expect(import('../src/parsers/metrics_parser.js')).resolves.toBeDefined();
+    await expect(import('../src/analyzers/failure_analyzer.js')).resolves.toBeDefined();
+    await expect(import('../src/analyzers/performance_analyzer.js')).resolves.toBeDefined();
+    await expect(import('../src/analyzers/bug_analyzer.js')).resolves.toBeDefined();
+    await expect(import('../src/analyzers/prompt_quality_analyzer.js')).resolves.toBeDefined();
+    await expect(import('../src/reporters/json_reporter.js')).resolves.toBeDefined();
+    await expect(import('../src/reporters/markdown_reporter.js')).resolves.toBeDefined();
+    await expect(import('../src/lib/pipeline.js')).resolves.toBeDefined();
   });
 
-  it('should have runAnalysisPipeline as a function', () => {
+  it('exposes runAnalysisPipeline as a function', () => {
     expect(typeof api.runAnalysisPipeline).toBe('function');
   });
 
-  it('should handle calling runAnalysisPipeline with missing arguments', async () => {
-    // Should throw or reject if required args are missing
+  it('rejects invalid runAnalysisPipeline calls', async () => {
     await expect(api.runAnalysisPipeline()).rejects.toBeDefined();
+    await expect(api.runAnalysisPipeline({ invalid: true } as never)).rejects.toBeDefined();
   });
 
-  it('should handle calling runAnalysisPipeline with invalid options', async () => {
-    await expect(api.runAnalysisPipeline({ invalid: true })).rejects.toBeDefined();
-  });
-
-  it('should export types (type-only, not present at runtime)', () => {
-    // Types are erased at runtime, but this ensures the export exists in TS
-    // @ts-expect-error
+  it('does not export runtime-only type symbols', () => {
+    // @ts-expect-error runtime assertion for erased type exports
     expect(api.PipelineOptions).toBeUndefined();
   });
 
-  it('should not export unexpected properties', () => {
-    const allowed = [
+  it('does not expose unexpected top-level exports', () => {
+    const allowed = new Set([
+      'DEFAULT_THRESHOLDS',
+      'analyzeAllPrompts',
+      'analyzeBugs',
+      'analyzeFailures',
+      'analyzePerformance',
+      'analyzePromptRecord',
+      'buildMetricsSummary',
+      'parseLine',
+      'parseMetrics',
+      'parseMetricsJson',
+      'parsePromptFile',
+      'parsePromptFileContent',
+      'parsePromptParts',
+      'parseRunLogs',
+      'parseRunLogsToArray',
+      'parseRunMetadata',
+      'parseRunPrompts',
       'runAnalysisPipeline',
-      'log_parser',
-      'prompt_parser',
-      'metrics_parser',
-      'failure_analyzer',
-      'performance_analyzer',
-      'bug_analyzer',
-      'prompt_quality_analyzer',
-      'json_reporter',
-      'markdown_reporter',
-    ];
-    Object.keys(api).forEach((key) => {
-      expect(allowed).toContain(key);
-    });
-  });
+      'streamLogFile',
+      'toJson',
+      'toMarkdown',
+      'writeJsonReport',
+      'writeMarkdownReport',
+    ]);
 
-  it('should be able to import all submodules without error', () => {
-    expect(() => require('../src/parsers/log_parser.js')).not.toThrow();
-    expect(() => require('../src/parsers/prompt_parser.js')).not.toThrow();
-    expect(() => require('../src/parsers/metrics_parser.js')).not.toThrow();
-    expect(() => require('../src/analyzers/failure_analyzer.js')).not.toThrow();
-    expect(() => require('../src/analyzers/performance_analyzer.js')).not.toThrow();
-    expect(() => require('../src/analyzers/bug_analyzer.js')).not.toThrow();
-    expect(() => require('../src/analyzers/prompt_quality_analyzer.js')).not.toThrow();
-    expect(() => require('../src/reporters/json_reporter.js')).not.toThrow();
-    expect(() => require('../src/reporters/markdown_reporter.js')).not.toThrow();
-    expect(() => require('../src/lib/pipeline.js')).not.toThrow();
+    Object.keys(api).forEach((key) => {
+      expect(allowed.has(key)).toBe(true);
+    });
   });
 });

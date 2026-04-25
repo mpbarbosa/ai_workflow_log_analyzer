@@ -1,7 +1,7 @@
 /** LLMStreamPanel — live streaming of Copilot SDK re-analysis responses. */
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
-import { streamLLM } from '../../lib/copilot_client.js';
+import { streamLLM } from '../../lib/ai_client.js';
 import type { Issue } from '../../types/index.js';
 
 interface LLMStreamPanelProps {

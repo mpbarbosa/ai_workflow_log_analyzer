@@ -73,7 +73,10 @@ export function parsePromptFileContent(content: string): ParsedPromptFile | null
   // section in parsePromptParts. Stopping only at \n## Response is safe because the
   // prompt log format always places ## Response immediately after the ## Prompt block.
   const promptSectionMatch = content.match(/## Prompt\s*\n([\s\S]*?)(?=\n## Response|$)/);
-  const responseSectionMatch = content.match(/## Response\s*\n([\s\S]*?)(?=\n## |$)/);
+  // The response block is the last top-level section in the prompt-log format.
+  // Stop only at end-of-file so inner markdown headings inside the fenced
+  // response body (for example "## Cross-Reference Validation") are preserved.
+  const responseSectionMatch = content.match(/## Response\s*\n([\s\S]*)$/);
 
   const extractCodeBlock = (section: string): string => {
     const lines = section.split('\n');

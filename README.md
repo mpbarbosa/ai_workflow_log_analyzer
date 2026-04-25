@@ -157,12 +157,15 @@ For any open file, press `s` to switch to **Parts view** (structured section lis
 │                  │  comprehensive valid-    │  1. Add missing JSDoc…      │
 │                  │  ation of the codebase.  │  2. Fix retry logic…        │
 ├──────────────────┴──────────────────────────┴─────────────────────────────┤
-│ [Tab] Prompt↔Response  [z] Zoom pane  [p] Raw view  [Esc] Close  [SPLIT] │
+│ [Tab] Prompt↔Response  [z] Zoom pane  [d] Analyze folder  [f] Fix issues  [p] Raw view  [Esc] Close  [SPLIT] │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
 `Tab` moves focus between the Prompt and Response panes (active pane highlighted).  
-`PgUp`/`PgDn` scrolls whichever pane is focused.
+`PgUp`/`PgDn` scrolls whichever pane is focused. Press `d` to analyze the open
+prompt log file's parent folder in an interactive Copilot session, or `f` to
+launch the fix skill for actionable issues called out in the open prompt
+response.
 
 #### State 3b — Zoomed pane (`z`)
 
@@ -182,7 +185,7 @@ For any open file, press `s` to switch to **Parts view** (structured section lis
 │                                                                           │
 │                                                                           │
 ├───────────────────────────────────────────────────────────────────────────┤
-│ [z] Zoom out  [PgUp/Dn] Scroll  [p] Raw view  [Esc] Close      [ZOOM]   │
+│ [z] Zoom out  [PgUp/Dn] Scroll  [d] Analyze folder  [f] Fix issues  [p] Raw view  [Esc] Close      [ZOOM]   │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -205,15 +208,20 @@ Press `s` on any open file to switch into **Parts view**, which parses the file 
 │ │   Output format           │  │                                            │ │
 │ └───────────────────────────┘  └────────────────────────────────────────────┘ │
 ├───────────────────────────────────────────────────────────────────────────────┤
-│ [↑↓] Sections  [a] Analyze part  [s] Raw view  [Esc] Close          [PARTS]  │
+│ [↑↓] Sections  [a] Analyze codebase  [b] Reverse prompt  [d] Analyze folder  [f] Fix issues  [s] Raw view  [Esc] Close  │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Use `↑`/`↓` to navigate sections. Press `a` to stream a Copilot analysis of the selected section against your project's codebase.
+Use `↑`/`↓` to navigate sections. Press `a` to stream a Copilot analysis of the
+selected section against your project's codebase. Press `b` to
+reverse-engineer the selected section into a reusable master prompt. Press `d`
+to analyze the open prompt log file's parent folder in an interactive Copilot
+session. Press `f` to launch the Copilot fix skill against actionable issues
+extracted from the prompt response.
 
-#### State 3d — Part analysis overlay (`a`)
+#### State 3d — Part analysis overlay (`a` / `b`)
 
-With a part selected in Parts view, press `a` to open the **analysis overlay**:
+With a part selected in Parts view, press `a` to open the codebase-alignment overlay or `b` to open the reverse-prompting overlay:
 
 ```text
 ┌─ ai_workflow Log Analyzer ──────────────────────────── 📂 FILES › [ANALYZING] ─┐
@@ -264,6 +272,8 @@ Press `Esc` to cancel in-flight streaming or to close a completed overlay.
 | `Esc` | Viewer / overlay | Close file or cancel analysis, return to tree |
 | `PgUp` / `PgDn` | Viewer | Scroll file content |
 | `g` / `G` | Viewer | Jump to top / bottom |
+| `d` | Viewer (prompt `.md`) | Analyze the open prompt log file's parent folder in an interactive Copilot session |
+| `f` | Viewer (prompt `.md`) | Extract actionable issues from the prompt response and launch the fix skill; if none are found, show a notice and stay in the TUI |
 | `p` | Viewer (prompt `.md`) | Toggle Prompt/Response split view |
 | `Tab` | Split view | Switch focus: Prompt pane ↔ Response pane |
 | `z` | Split view | Zoom focused pane to full-screen / zoom out |
@@ -339,17 +349,26 @@ cd ai_workflow_log_analyzer
 npm install
 
 # Type check
-npm run typecheck
+npm run type:check
 
 # Run tests
 npm test
+
+# Run the CI suite serially
+npm run test:ci
 
 # Dev mode (tsx, no compile step)
 npm run dev -- --tui /path/to/project
 
 # Build
 npm run build
+
+# Run the full verification suite in Docker
+npm run test:docker
 ```
+
+The GitHub Actions workflow at `.github/workflows/ci.yml` builds the `verify` Docker image and
+runs `npm run verify` inside the container on every push to `main` and every pull request.
 
 ## Architecture
 

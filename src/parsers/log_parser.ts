@@ -22,7 +22,6 @@ import type {
 const TIMESTAMP_RE = /^\[(\d{4}-\d{2}-\d{2}T[\d:.]+Z)\] /;
 const AI_CALL_START_RE = /\[AI\] SDK call starting — persona: (\S+), model: (\S+), prompt_chars: (\d+)/;
 const AI_CALL_COMPLETE_RE = /\[AI\] SDK call completed — persona: (\S+), model: (\S+), response_chars: (\d+), latency: (\d+)ms/;
-const STEP_START_RE = /→ Starting: (.+)/;
 const STEP_COMPLETE_RE = /✓ Step (step_\S+) completed in (\d+)ms/;
 const STEP_WARNING_RE = /⚠ Step (\d+) completed - (\d+) issue\(s\) found/;
 const STEP_ERROR_RE = /✗ \[CRITICAL\] Operation '(step_\S+)' took ([\d.]+)(?:ms|s)(?: \(memory: ([\d.]+)MB\))?/;

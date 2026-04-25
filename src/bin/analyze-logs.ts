@@ -9,6 +9,8 @@ import { Command } from 'commander';
 import { resolve, join } from 'node:path';
 import { writeFile, readdir, mkdir } from 'node:fs/promises';
 import chalk from 'chalk';
+import { setProvider } from '../lib/ai_client.js';
+import type { AIProvider } from '../lib/ai_client.js';
 
 /**
  * Returns (and creates) the next step directory for a given run's analysis output.
@@ -47,6 +49,7 @@ program
   .option('--json [output]', 'Output analysis as JSON (optionally specify output file)')
   .option('--md [output]', 'Output analysis as Markdown (optionally specify output file)')
   .option('--run <run-id>', 'Analyze a specific run ID (e.g. workflow_20260326_224118)')
+  .option('--provider <name>', 'AI provider to use for LLM calls: copilot (default) or claude', 'copilot')
   .option('--skip-prompt-quality', 'Skip LLM prompt quality analysis (faster, no SDK required)')
   .option('--skip-summary', 'Skip LLM executive summary')
   .option('--threshold-config <path>', 'Path to threshold config JSON/YAML file')
@@ -66,7 +69,11 @@ Examples:
   # Target a specific run by ID
   $ analyze-logs --run workflow_20260327_012345 --json /path/to/project
 
-  # Faster: skip LLM-assisted analyses (no Copilot SDK required)
+  # Use Claude instead of Copilot for LLM-assisted analyses
+  $ analyze-logs --provider claude --tui /path/to/project
+  $ analyze-logs --provider claude --json report.json /path/to/project
+
+  # Faster: skip LLM-assisted analyses entirely (no provider required)
   $ analyze-logs --skip-prompt-quality --skip-summary --md report.md /path/to/project
 
   # Custom detection thresholds (JSON or YAML)
@@ -77,11 +84,12 @@ Notes:
   - --json/--md without a file path auto-generates the output path under
     <project-root>/.ai_workflow/analysis/<run-id>/step_<N>/.
   - --skip-prompt-quality also suppresses the executive summary.
-  - Requires GitHub Copilot CLI authenticated (gh copilot --version) for
-    LLM-assisted prompt quality analysis and executive summary.`)
+  - --provider copilot requires GitHub Copilot CLI authenticated (gh copilot --version).
+  - --provider claude requires the Claude CLI configured locally.`)
   .action(async (projectRootArg: string, opts: {
     tui?: boolean;
     project?: string;
+    provider?: string;
     json?: string | boolean;
     md?: string | boolean;
     run?: string;
@@ -90,12 +98,15 @@ Notes:
     thresholdConfig?: string;
   }) => {
     const projectRoot = resolve(opts.project ?? projectRootArg);
+    const provider = (opts.provider === 'claude' ? 'claude' : 'copilot') as AIProvider;
+    setProvider(provider);
+
     const isTui = !opts.json && !opts.md;
 
     if (isTui || opts.tui) {
       // Launch TUI
       const { startTUI } = await import('../tui/index.js');
-      startTUI({ projectRoot, skipPromptQuality: opts.skipPromptQuality });
+      startTUI({ projectRoot, skipPromptQuality: opts.skipPromptQuality, provider });
       return;
     }
 

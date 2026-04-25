@@ -1,9 +1,9 @@
 /**
- * Tests for useFileTree utilities — formatFileSize and sizeBytes population.
+ * Tests for useFileTree utilities — formatFileSize and tree entry construction.
  */
 
-import { formatFileSize } from '../../src/tui/hooks/useFileTree.js';
-import { mkdtemp, writeFile, mkdir, rm } from 'node:fs/promises';
+import { formatFileSize, buildTreeEntries } from '../../src/tui/hooks/useFileTree.js';
+import { mkdtemp, writeFile, mkdir, rm, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -74,25 +74,13 @@ describe('formatFileSize', () => {
 // from a shallow integration approach: write known-size files, call the same
 // underlying Node.js path that buildTree uses, and verify the public contract.
 
-import { readdir, stat } from 'node:fs/promises';
-
-async function buildEntriesFromDir(dir: string) {
-  // Mirror exactly what buildTree does so we can test sizeBytes capture without
-  // importing the private function.
-  const names = (await readdir(dir)).sort();
-  const entries = [];
-  for (const name of names) {
-    const full = join(dir, name);
-    let isDir = false;
-    let sizeBytes: number | undefined;
-    try {
-      const s = await stat(full);
-      isDir = s.isDirectory();
-      if (!isDir) sizeBytes = s.size;
-    } catch { /* ignore */ }
-    entries.push({ name, isDir, sizeBytes });
-  }
-  return entries;
+async function buildEntriesFromDir(dir: string, onError?: (message: string) => void) {
+  const entries = await buildTreeEntries(dir, null, onError);
+  return entries.map((entry) => ({
+    name: entry.label.replace(/\/$/, ''),
+    isDir: entry.isDir,
+    sizeBytes: entry.sizeBytes,
+  }));
 }
 
 describe('sizeBytes population', () => {
@@ -155,5 +143,20 @@ describe('sizeBytes population', () => {
     // Boundary: just below 1 GB → MB, exactly 1 GB → GB
     expect(formatFileSize(1024 * 1024 * 1024 - 1)).toContain('MB');
     expect(formatFileSize(1024 * 1024 * 1024)).toContain('GB');
+  });
+
+  it('reports stat failures instead of treating broken paths as files', async () => {
+    const brokenLink = join(tmpDir, 'broken-link');
+    await symlink(join(tmpDir, 'missing-target'), brokenLink);
+
+    const errors: string[] = [];
+    const entries = await buildEntriesFromDir(tmpDir, (message) => {
+      errors.push(message);
+    });
+
+    expect(entries).toHaveLength(0);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('Unable to inspect path');
+    expect(errors[0]).toContain('broken-link');
   });
 });

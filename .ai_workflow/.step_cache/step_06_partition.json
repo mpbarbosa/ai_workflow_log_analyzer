@@ -1,13 +1,17 @@
 {
   "version": 1,
   "partitionIndex": 1,
-  "totalPartitions": 4,
-  "filesHash": "a12c7a06",
+  "totalPartitions": 8,
+  "filesHash": "167024d6",
   "partitionLabels": [
     "test/analyzers",
     "test/analyzers (2)",
     "test/bin, test, test/lib",
-    "test/parsers, test/reporters, test/tui"
+    "test/parsers, test/reporters",
+    "test/tui",
+    "test/tui (2)",
+    "test/tui (3)",
+    "test/setup"
   ],
-  "updatedAt": "2026-04-11T20:34:38.567Z"
+  "updatedAt": "2026-04-25T01:32:03.494Z"
 }

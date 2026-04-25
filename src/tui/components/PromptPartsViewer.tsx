@@ -39,6 +39,7 @@ export function PromptPartsViewer({ filePath }: PromptPartsViewerProps) {
   const termRows = Math.max(5, (stdout?.rows ?? 40) - 8);
 
   const [parts, setParts] = useState<PromptPart[]>([]);
+  const [wholePromptLines, setWholePromptLines] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [contentOffset, setContentOffset] = useState(0);
   const [meta, setMeta] = useState('');
@@ -46,14 +47,17 @@ export function PromptPartsViewer({ filePath }: PromptPartsViewerProps) {
 
   // Always-current refs so getSelectedPart() can read synchronously
   const partsRef = useRef<PromptPart[]>([]);
+  const wholePromptLinesRef = useRef<string[]>([]);
   const selectedIndexRef = useRef(0);
 
   // Keep refs in sync
   useEffect(() => { partsRef.current = parts; }, [parts]);
+  useEffect(() => { wholePromptLinesRef.current = wholePromptLines; }, [wholePromptLines]);
   useEffect(() => { selectedIndexRef.current = selectedIndex; }, [selectedIndex]);
 
   useEffect(() => {
     setParts([]);
+    setWholePromptLines([]);
     setError(null);
     setSelectedIndex(0);
     setContentOffset(0);
@@ -63,10 +67,12 @@ export function PromptPartsViewer({ filePath }: PromptPartsViewerProps) {
         const parsed = parsePromptFileContent(text);
         if (parsed) {
           setMeta(`${parsed.persona}  ·  ${parsed.model}`);
+          setWholePromptLines(parsed.prompt.split('\n'));
           setParts(parsePromptParts(parsed.prompt));
         } else {
           // Not a prompt log file — parse section markers from raw content
           setMeta(basename(filePath));
+          setWholePromptLines(text.split('\n'));
           setParts(parsePromptParts(text));
         }
       })
@@ -99,6 +105,10 @@ export function PromptPartsViewer({ filePath }: PromptPartsViewerProps) {
       },
       // Returns the currently selected PromptPart so App.tsx can pass it to PartAnalysisOverlay
       getSelectedPart: () => partsRef.current[selectedIndexRef.current] ?? null,
+      getWholePrompt: () => {
+        if (wholePromptLinesRef.current.length === 0) return null;
+        return { label: 'Whole Prompt', lines: wholePromptLinesRef.current };
+      },
     };
   }, [termRows]);
 

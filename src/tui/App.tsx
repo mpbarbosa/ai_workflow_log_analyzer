@@ -7,7 +7,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useApp, useInput, useStdin, useStdout } from 'ink';
 import { spawnSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { Header } from './components/Header.js';
 import { StatusBar } from './components/StatusBar.js';
@@ -18,28 +18,52 @@ import { DetailOverlay } from './components/DetailOverlay.js';
 import { LLMStreamPanel } from './components/LLMStreamPanel.js';
 import { FileTree } from './components/FileTree.js';
 import { FileViewer } from './components/FileViewer.js';
-import { PromptSplitViewer, isPromptFile, isAnalysisFile } from './components/PromptSplitViewer.js';
+import {
+  PromptSplitViewer,
+  isPromptFile,
+  isAnalysisFile,
+  isWorkflowLogFile,
+} from './components/PromptSplitViewer.js';
 import { PromptPartsViewer } from './components/PromptPartsViewer.js';
-import { PartAnalysisOverlay } from './components/PartAnalysisOverlay.js';
+import { PartAnalysisOverlay, type PartAnalysisKind } from './components/PartAnalysisOverlay.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
+import { buildPromptFolderAnalysisPrompt } from './prompt_folder_analysis.js';
+import { buildPromptLogConsolidationPrompt } from './prompt_log_consolidation.js';
+import { buildPromptLogValidationPrompt } from './prompt_log_validation.js';
+import { buildWorkflowLogExecutionAnalysisPrompt } from './workflow_log_execution_analysis.js';
+import {
+  buildPromptResponseFixPrompt,
+  hasPromptResponseIssueCandidates,
+  NO_ACTIONABLE_PROMPT_RESPONSE_ISSUES_MESSAGE,
+} from './prompt_response_fix.js';
 import { useRunSelector } from './hooks/useRunSelector.js';
 import { useAnalysis } from './hooks/useAnalysis.js';
 import { useFileTree } from './hooks/useFileTree.js';
 import type { PanelId, Issue, ThresholdConfig } from '../types/index.js';
-import type { PromptPart } from '../parsers/prompt_parser.js';
+import { parsePromptFileContent } from '../parsers/prompt_parser.js';
 
 export interface AppProps {
   projectRoot: string;
   thresholds?: ThresholdConfig;
   skipPromptQuality?: boolean;
+  provider?: import('../lib/ai_client.js').AIProvider;
 }
 
 type AppMode = 'analysis' | 'files';
+type PromptAnalysisTarget = {
+  label: string;
+  lines: string[];
+};
+
+type PartAnalysisRequest = {
+  kind: PartAnalysisKind;
+  target: PromptAnalysisTarget;
+};
 
 const ANALYSIS_PANELS: PanelId[] = ['runs', 'issues', 'metrics', 'detail'];
 const FILES_PANELS: PanelId[] = ['runs', 'filetree', 'fileviewer'];
 
-export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppProps) {
+export function App({ projectRoot, thresholds, skipPromptQuality = false, provider = 'copilot' }: AppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const { setRawMode } = useStdin();
@@ -70,9 +94,15 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
   const [promptPartsMode, setPromptPartsMode] = useState(false);
   const [promptFocusedPane, setPromptFocusedPane] = useState<'prompt' | 'response'>('prompt');
   const [promptZoomedPane, setPromptZoomedPane] = useState<'prompt' | 'response' | null>(null);
-  const [partAnalysisPart, setPartAnalysisPart] = useState<PromptPart | null>(null);
+  const [partAnalysisRequest, setPartAnalysisRequest] = useState<PartAnalysisRequest | null>(null);
   const [planCliPending, setPlanCliPending] = useState<string | null>(null);
+  const [consolidateLogsCliPending, setConsolidateLogsCliPending] = useState<string | null>(null);
+  const [analyzeFolderCliPending, setAnalyzeFolderCliPending] = useState<string | null>(null);
+  const [validatePromptCliPending, setValidatePromptCliPending] = useState<string | null>(null);
+  const [fixPromptResponseCliPending, setFixPromptResponseCliPending] = useState<string | null>(null);
+  const [workflowLogCliPending, setWorkflowLogCliPending] = useState<string | null>(null);
   const [auditSkillPending, setAuditSkillPending] = useState(false);
+  const [viewerNotice, setViewerNotice] = useState<string | null>(null);
 
   const selectedIssue: Issue | null = filteredIssues[issueIndex] ?? null;
 
@@ -88,10 +118,21 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
     });
   }, [mode, openedFilePath]);
 
-  const scrollViewer = (action: string) => {
-    const ctrl = (globalThis as Record<string, unknown>).__fileViewerScroll as Record<string, () => void> | undefined;
-    ctrl?.[action]?.();
-  };
+  const runInteractiveCopilot = useCallback((prompt: string, cwd = projectRoot) => {
+    setRawMode(false);
+    process.stdout.write('\x1b[?1049l');
+
+    try {
+      spawnSync('copilot', ['--allow-all', '-i', prompt], {
+        stdio: 'inherit',
+        cwd,
+        env: { ...process.env },
+      });
+    } finally {
+      process.stdout.write('\x1b[?1049h');
+      setRawMode(true);
+    }
+  }, [projectRoot, setRawMode]);
 
   // Spawn an interactive copilot plan session from an analysis file.
   useEffect(() => {
@@ -129,43 +170,112 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         `6. Rebuild: \`python3 ${buildScript}\`\n` +
         `7. Validate the generated YAML: \`python3 -c "import yaml; yaml.safe_load(open('${generatedFile}'))"\` and commit.\n\n` +
         `${content}`;
-
-      // Suspend Ink: exit alternate screen and disable raw mode
-      setRawMode(false);
-      process.stdout.write('\x1b[?1049l');
-
-      spawnSync('copilot', ['-i', prompt], {
-        stdio: 'inherit',
-        cwd: projectRoot,
-        env: { ...process.env },
-      });
-
-      // Restore Ink: re-enter alternate screen and re-enable raw mode
-      process.stdout.write('\x1b[?1049h');
-      setRawMode(true);
+      runInteractiveCopilot(prompt);
       setPlanCliPending(null);
     })();
 
     return () => { cancelled = true; };
-  }, [planCliPending, setRawMode]);
+  }, [planCliPending, projectRoot, runInteractiveCopilot]);
+
+  // Spawn an interactive copilot consolidation session from a run's prompt-log folder.
+  useEffect(() => {
+    if (!consolidateLogsCliPending) return;
+    runInteractiveCopilot(buildPromptLogConsolidationPrompt(consolidateLogsCliPending));
+    setConsolidateLogsCliPending(null);
+  }, [consolidateLogsCliPending, runInteractiveCopilot]);
+
+  // Spawn an interactive copilot analysis session for the open prompt file's parent folder.
+  useEffect(() => {
+    if (!analyzeFolderCliPending) return;
+
+    runInteractiveCopilot(
+      buildPromptFolderAnalysisPrompt(dirname(analyzeFolderCliPending), analyzeFolderCliPending),
+    );
+    setAnalyzeFolderCliPending(null);
+  }, [analyzeFolderCliPending, runInteractiveCopilot]);
+
+  // Spawn an interactive copilot validation session from a prompt log file.
+  useEffect(() => {
+    if (!validatePromptCliPending) return;
+
+    const prompt = buildPromptLogValidationPrompt(validatePromptCliPending);
+
+    runInteractiveCopilot(prompt);
+    setValidatePromptCliPending(null);
+  }, [runInteractiveCopilot, validatePromptCliPending]);
+
+  // Spawn an interactive copilot execution-analysis session from workflow.log.
+  useEffect(() => {
+    if (!workflowLogCliPending) return;
+    const filePath = workflowLogCliPending;
+    let cancelled = false;
+
+    (async () => {
+      const aiWorkflowRoot = join(dirname(projectRoot), 'ai_workflow.js');
+
+      try {
+        await access(aiWorkflowRoot);
+      } catch (error) {
+        if (!cancelled) {
+          const detail = error instanceof Error ? error.message : String(error);
+          setViewerNotice(`Could not access sibling ai_workflow.js repository: ${aiWorkflowRoot} (${detail})`);
+          setWorkflowLogCliPending(null);
+        }
+        return;
+      }
+
+      if (cancelled) return;
+
+      setViewerNotice(null);
+      runInteractiveCopilot(buildWorkflowLogExecutionAnalysisPrompt(filePath), aiWorkflowRoot);
+      setWorkflowLogCliPending(null);
+    })();
+
+    return () => { cancelled = true; };
+  }, [projectRoot, runInteractiveCopilot, workflowLogCliPending]);
+
+  // Spawn an interactive copilot fix session from a prompt log response.
+  useEffect(() => {
+    if (!fixPromptResponseCliPending) return;
+    const filePath = fixPromptResponseCliPending;
+    let cancelled = false;
+
+    (async () => {
+      const content = await readFile(filePath, 'utf8').catch(() => '');
+      if (cancelled) return;
+
+      const parsed = parsePromptFileContent(content);
+      if (!parsed) {
+        setViewerNotice('Could not parse prompt log response.');
+        setFixPromptResponseCliPending(null);
+        return;
+      }
+
+      if (!hasPromptResponseIssueCandidates(parsed.response)) {
+        setViewerNotice(NO_ACTIONABLE_PROMPT_RESPONSE_ISSUES_MESSAGE);
+        setFixPromptResponseCliPending(null);
+        return;
+      }
+
+      setViewerNotice(null);
+      runInteractiveCopilot(buildPromptResponseFixPrompt(filePath, parsed.response));
+      setFixPromptResponseCliPending(null);
+    })();
+
+    return () => { cancelled = true; };
+  }, [fixPromptResponseCliPending, runInteractiveCopilot]);
 
   // Spawn the audit-and-fix skill in an interactive copilot session.
   useEffect(() => {
     if (!auditSkillPending) return;
 
-    setRawMode(false);
-    process.stdout.write('\x1b[?1049l');
-
-    spawnSync('copilot', ['-i', 'Run the audit-and-fix skill'], {
-      stdio: 'inherit',
-      cwd: projectRoot,
-      env: { ...process.env },
-    });
-
-    process.stdout.write('\x1b[?1049h');
-    setRawMode(true);
+    runInteractiveCopilot('Run the audit-and-fix skill');
     setAuditSkillPending(false);
-  }, [auditSkillPending, setRawMode]);
+  }, [auditSkillPending, runInteractiveCopilot]);
+
+  useEffect(() => {
+    setViewerNotice(null);
+  }, [openedFilePath]);
 
   useInput((input, key) => {
     if (input === 'q' || (key.ctrl && input === 'c')) { exit(); return; }
@@ -187,10 +297,10 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
     if (key.escape) {
       if (showHelp) { setShowHelp(false); return; }
       // Close part analysis overlay first
-      if (partAnalysisPart) {
+      if (partAnalysisRequest) {
         const ctrl = (globalThis as Record<string, unknown>).__partAnalysisScroll as Record<string, () => void> | undefined;
         ctrl?.cancel?.();
-        setPartAnalysisPart(null);
+        setPartAnalysisRequest(null);
         return;
       }
       if (mode === 'files' && openedFilePath) {
@@ -221,6 +331,11 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       if (focusedPanel === 'filetree') {
         if (key.upArrow) fileTree.moveUp();
         if (key.downArrow) fileTree.moveDown();
+        if (input === 'w' && fileTree.selectedEntry?.filePath && isWorkflowLogFile(fileTree.selectedEntry.filePath)) {
+          setViewerNotice(null);
+          setWorkflowLogCliPending(fileTree.selectedEntry.filePath);
+          return;
+        }
         if (key.return) {
           const entry = fileTree.selectedEntry;
           if (entry?.isDir) {
@@ -234,16 +349,63 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
       }
 
       if (focusedPanel === 'fileviewer') {
+        if (input === 'w' && openedFilePath && isWorkflowLogFile(openedFilePath) && !partAnalysisRequest) {
+          setViewerNotice(null);
+          setWorkflowLogCliPending(openedFilePath);
+          return;
+        }
         // a: analyze selected prompt part vs codebase (parts mode only)
-        if (input === 'a' && promptPartsMode && !partAnalysisPart) {
+        if (input === 'a' && promptPartsMode && !partAnalysisRequest) {
           const partsCtrl = (globalThis as Record<string, unknown>).__promptPartsScroll as Record<string, () => unknown> | undefined;
-          const part = partsCtrl?.getSelectedPart?.() as import('../parsers/prompt_parser.js').PromptPart | null;
-          if (part) setPartAnalysisPart(part);
+          const part = partsCtrl?.getSelectedPart?.() as PromptAnalysisTarget | null;
+          if (part) setPartAnalysisRequest({ kind: 'codebase', target: part });
+          return;
+        }
+        // b: reverse-prompt the selected prompt part (parts mode only)
+        if (input === 'b' && promptPartsMode && !partAnalysisRequest) {
+          const partsCtrl = (globalThis as Record<string, unknown>).__promptPartsScroll as Record<string, () => unknown> | undefined;
+          const part = partsCtrl?.getSelectedPart?.() as PromptAnalysisTarget | null;
+          if (part) setPartAnalysisRequest({ kind: 'reverse_prompt', target: part });
+          return;
+        }
+        // e: reverse-prompt the whole prompt (prompt-log files in parts mode only)
+        if (input === 'e' && promptPartsMode && openedFilePath && isPromptFile(openedFilePath) && !partAnalysisRequest) {
+          const partsCtrl = (globalThis as Record<string, unknown>).__promptPartsScroll as Record<string, () => unknown> | undefined;
+          const wholePrompt = partsCtrl?.getWholePrompt?.() as PromptAnalysisTarget | null;
+          if (wholePrompt) {
+            setViewerNotice(null);
+            setPartAnalysisRequest({ kind: 'reverse_prompt_full', target: wholePrompt });
+          } else {
+            setViewerNotice('Could not load the full prompt text for analysis.');
+          }
+          return;
+        }
+        // c: consolidate the selected run's prompts folder in an interactive Copilot session
+        if (input === 'c' && openedFilePath && selectedRun && !partAnalysisRequest) {
+          setViewerNotice(null);
+          setConsolidateLogsCliPending(join(selectedRun.path, 'prompts'));
+          return;
+        }
+        // d: analyze the open prompt file's parent folder in an interactive Copilot session
+        if (input === 'd' && openedFilePath && isPromptFile(openedFilePath) && !partAnalysisRequest) {
+          setViewerNotice(null);
+          setAnalyzeFolderCliPending(openedFilePath);
           return;
         }
         // x: send analysis file to copilot CLI with [[PLAN]] prompt (parts mode + analysis file only)
-        if (input === 'x' && promptPartsMode && openedFilePath && isAnalysisFile(openedFilePath) && !partAnalysisPart) {
+        if (input === 'x' && promptPartsMode && openedFilePath && isAnalysisFile(openedFilePath) && !partAnalysisRequest) {
           setPlanCliPending(openedFilePath);
+          return;
+        }
+        // g: validate the current prompt log file in an interactive Copilot session (parts mode only)
+        if (input === 'g' && promptPartsMode && openedFilePath && isPromptFile(openedFilePath) && !partAnalysisRequest) {
+          setValidatePromptCliPending(openedFilePath);
+          return;
+        }
+        // f: extract actionable issues from the prompt response and fix them
+        if (input === 'f' && openedFilePath && isPromptFile(openedFilePath) && !partAnalysisRequest) {
+          setViewerNotice(null);
+          setFixPromptResponseCliPending(openedFilePath);
           return;
         }
         // p: toggle prompt split view (only for prompt .md files)
@@ -257,7 +419,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         // s: toggle prompt parts view (any open file)
         if (input === 's' && openedFilePath) {
           setPromptPartsMode((s) => !s);
-          setPartAnalysisPart(null);
+          setPartAnalysisRequest(null);
           setPromptSplitMode(false);
           setPromptZoomedPane(null);
           return;
@@ -276,14 +438,26 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
           return;
         }
         // Route scroll to analysis overlay when open, otherwise to file/parts viewer
-        const scrollTarget = partAnalysisPart
+        const scrollTarget = partAnalysisRequest
           ? '__partAnalysisScroll'
           : promptPartsMode ? '__promptPartsScroll'
           : promptSplitMode ? '__promptSplitScroll'
           : '__fileViewerScroll';
         const ctrl = (globalThis as Record<string, unknown>)[scrollTarget] as Record<string, () => void> | undefined;
-        if (key.upArrow)    (promptPartsMode && !partAnalysisPart) ? ctrl?.prevPart?.() : ctrl?.up?.();
-        if (key.downArrow)  (promptPartsMode && !partAnalysisPart) ? ctrl?.nextPart?.() : ctrl?.down?.();
+        if (key.upArrow) {
+          if (promptPartsMode && !partAnalysisRequest) {
+            ctrl?.prevPart?.();
+          } else {
+            ctrl?.up?.();
+          }
+        }
+        if (key.downArrow) {
+          if (promptPartsMode && !partAnalysisRequest) {
+            ctrl?.nextPart?.();
+          } else {
+            ctrl?.down?.();
+          }
+        }
         if (key.pageUp || (key.ctrl && input === 'u')) ctrl?.pageUp?.();
         if (key.pageDown || (key.ctrl && input === 'd')) ctrl?.pageDown?.();
         if (input === 'g') ctrl?.jumpStart?.();
@@ -335,6 +509,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         status={state === 'running' ? 'running' : state === 'done' ? 'done' : state === 'error' ? 'error' : 'idle'}
         mode={mode}
         projectRoot={projectRoot}
+        provider={provider}
       />
 
       <Box flexGrow={1}>
@@ -356,7 +531,7 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
                 /* File open: tree as narrow sidebar + dedicated viewer */
                 <>
                   {/* Hide tree when zoomed, in parts mode, or in part analysis for maximum screen real estate */}
-                  {!(promptPartsMode || partAnalysisPart || (promptSplitMode && promptZoomedPane)) && (
+                  {!(promptPartsMode || partAnalysisRequest || (promptSplitMode && promptZoomedPane)) && (
                     <FileTree
                       entries={fileTree.entries}
                       selectedIndex={fileTree.selectedIndex}
@@ -366,11 +541,12 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
                       height={contentRows}
                     />
                   )}
-                  {partAnalysisPart ? (
+                  {partAnalysisRequest ? (
                     <PartAnalysisOverlay
-                      part={partAnalysisPart}
+                      target={partAnalysisRequest.target}
                       projectRoot={projectRoot}
                       runId={selectedRun?.runId ?? `analysis_${new Date().toISOString().replace(/[:.]/g, '-')}`}
+                      analysisKind={partAnalysisRequest.kind}
                     />
                   ) : promptPartsMode ? (
                     <PromptPartsViewer filePath={openedFilePath} />
@@ -429,6 +605,12 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         </Box>
       )}
 
+      {viewerNotice && (
+        <Box paddingX={1}>
+          <Text color="yellow">Notice: {viewerNotice}</Text>
+        </Box>
+      )}
+
       <StatusBar
         filter={filter}
         focusedPanel={focusedPanel}
@@ -437,9 +619,14 @@ export function App({ projectRoot, thresholds, skipPromptQuality = false }: AppP
         fileOpen={!!openedFilePath}
         promptSplitMode={promptSplitMode}
         promptPartsMode={promptPartsMode}
-        partAnalysisOpen={!!partAnalysisPart}
+        partAnalysisOpen={!!partAnalysisRequest}
         isPromptFile={!!(openedFilePath && isPromptFile(openedFilePath))}
         isAnalysisFile={!!(openedFilePath && isAnalysisFile(openedFilePath))}
+        isWorkflowLogFile={!!(
+          mode === 'files' &&
+          ((focusedPanel === 'filetree' && fileTree.selectedEntry?.filePath && isWorkflowLogFile(fileTree.selectedEntry.filePath)) ||
+          (focusedPanel === 'fileviewer' && openedFilePath && isWorkflowLogFile(openedFilePath)))
+        )}
         promptZoomed={!!promptZoomedPane}
         analysisState={state}
         progressPhase={progress.phase}

@@ -11,7 +11,6 @@ import type {
   Issue,
   IssueSeverity,
   ThresholdConfig,
-  DEFAULT_THRESHOLDS,
   RunMetrics,
 } from '../types/index.js';
 import { DEFAULT_THRESHOLDS as defaults } from '../types/index.js';

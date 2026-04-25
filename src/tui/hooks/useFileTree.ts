@@ -24,6 +24,8 @@ export interface FileEntry {
   sizeBytes?: number;
 }
 
+type ErrorReporter = (message: string) => void;
+
 /**
  * Converts a raw byte count into a human-readable size string.
  * Uses 1-decimal-place precision for KB, MB, and GB.
@@ -41,24 +43,37 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
-async function scanDir(dir: string, depth: number): Promise<FileEntry[]> {
+function formatTreeError(action: 'read directory' | 'inspect path', targetPath: string, error: unknown): string {
+  const detail = error instanceof Error ? error.message : String(error);
+  return `Unable to ${action}: ${targetPath} (${detail})`;
+}
+
+async function scanDir(
+  dir: string,
+  depth: number,
+  reportError: ErrorReporter
+): Promise<{ entries: FileEntry[]; canExpand: boolean }> {
   let names: string[];
   try {
     names = (await readdir(dir)).sort();
-  } catch {
-    return [];
+  } catch (error) {
+    reportError(formatTreeError('read directory', dir, error));
+    return { entries: [], canExpand: false };
   }
 
   const entries: FileEntry[] = [];
   for (const name of names) {
     const full = join(dir, name);
-    let isDir = false;
     let sizeBytes: number | undefined;
+    let isDir: boolean;
     try {
       const s = await stat(full);
       isDir = s.isDirectory();
       if (!isDir) sizeBytes = s.size;
-    } catch { /* treat as file on error */ }
+    } catch (error) {
+      reportError(formatTreeError('inspect path', full, error));
+      continue;
+    }
     if (isDir) {
       entries.push({
         label: name + '/',
@@ -79,22 +94,39 @@ async function scanDir(dir: string, depth: number): Promise<FileEntry[]> {
       });
     }
   }
-  return entries;
+  return { entries, canExpand: true };
 }
 
-async function buildTree(runDir: string, analysisDir: string | null): Promise<FileEntry[]> {
+/**
+ * Builds the top-level file tree entries for the selected workflow run.
+ * Reports filesystem access problems through the provided callback instead of silently masking them.
+ */
+export async function buildTreeEntries(
+  runDir: string,
+  analysisDir: string | null,
+  reportError: ErrorReporter = () => {}
+): Promise<FileEntry[]> {
   const result: FileEntry[] = [];
-  const topNames = (await readdir(runDir).catch(() => [])).sort();
+  let topNames: string[];
+  try {
+    topNames = (await readdir(runDir)).sort();
+  } catch (error) {
+    reportError(formatTreeError('read directory', runDir, error));
+    return result;
+  }
 
   for (const name of topNames) {
     const full = join(runDir, name);
-    let isDir = false;
     let sizeBytes: number | undefined;
+    let isDir: boolean;
     try {
       const s = await stat(full);
       isDir = s.isDirectory();
       if (!isDir) sizeBytes = s.size;
-    } catch { /* treat as file on error */ }
+    } catch (error) {
+      reportError(formatTreeError('inspect path', full, error));
+      continue;
+    }
     if (isDir) {
       result.push({ label: name + '/', filePath: null, depth: 0, isDir: true, isExpanded: false, key: full });
     } else {
@@ -103,8 +135,8 @@ async function buildTree(runDir: string, analysisDir: string | null): Promise<Fi
   }
 
   if (analysisDir) {
-    const analysisNames = await readdir(analysisDir).catch(() => null);
-    if (analysisNames !== null) {
+    try {
+      await readdir(analysisDir);
       result.push({
         label: 'analysis/',
         filePath: null,
@@ -113,6 +145,8 @@ async function buildTree(runDir: string, analysisDir: string | null): Promise<Fi
         isExpanded: false,
         key: analysisDir,
       });
+    } catch (error) {
+      reportError(formatTreeError('read directory', analysisDir, error));
     }
   }
 
@@ -129,12 +163,34 @@ export function useFileTree(runDir: string | null, analysisDir: string | null = 
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const appendError = (message: string) => {
+    setError((prev) => {
+      if (prev === message || prev?.includes(message)) return prev;
+      return prev ? `${prev}\n${message}` : message;
+    });
+  };
 
   useEffect(() => {
-    if (!runDir) { setEntries([]); return; }
+    if (!runDir) {
+      setEntries([]);
+      setError(null);
+      return;
+    }
     setLoading(true);
     setSelectedIndex(0);
-    buildTree(runDir, analysisDir).then((e) => { setEntries(e); setLoading(false); });
+    setError(null);
+    buildTreeEntries(runDir, analysisDir, appendError)
+      .then((e) => {
+        setEntries(e);
+        setLoading(false);
+      })
+      .catch((treeError: unknown) => {
+        appendError(formatTreeError('read directory', runDir, treeError));
+        setEntries([]);
+        setLoading(false);
+      });
   }, [runDir, analysisDir]);
 
   const selectedEntry = entries[selectedIndex] ?? null;
@@ -157,7 +213,8 @@ export function useFileTree(runDir: string | null, analysisDir: string | null = 
       setEntries([...before.map((e, i) => i === idx ? { ...e, isExpanded: false } : e), ...after]);
     } else {
       // Expand: read children and insert after this entry
-      const children = await scanDir(entry.key, entry.depth + 1);
+      const { entries: children, canExpand } = await scanDir(entry.key, entry.depth + 1, appendError);
+      if (!canExpand) return;
       const updated = [
         ...entries.slice(0, idx),
         { ...entry, isExpanded: true },
@@ -168,5 +225,5 @@ export function useFileTree(runDir: string | null, analysisDir: string | null = 
     }
   };
 
-  return { entries, selectedIndex, selectedEntry, loading, moveUp, moveDown, toggleExpand };
+  return { entries, selectedIndex, selectedEntry, loading, error, moveUp, moveDown, toggleExpand };
 }

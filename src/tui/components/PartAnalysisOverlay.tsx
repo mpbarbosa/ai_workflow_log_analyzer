@@ -1,9 +1,10 @@
 /**
- * PartAnalysisOverlay — streams a Copilot analysis of the selected prompt section
- * vs the actual project codebase, and saves the result to disk on completion.
+ * PartAnalysisOverlay — streams a Copilot analysis of a selected prompt section
+ * or a synthetic whole-prompt target
+ * and saves the result to disk on completion.
  *
- * Activated by [a] in Prompt Parts view.
- * Saved to: <projectRoot>/.ai_workflow/analysis/<runId>/part_<label>_<timestamp>.md
+ * Activated by [a], [b], or [e] in Prompt Parts view.
+ * Saved to: <projectRoot>/.ai_workflow/analysis/<runId>/{part|reverse_prompt|reverse_prompt_full}_<label>_<timestamp>.md
  * @module tui/components/PartAnalysisOverlay
  */
 
@@ -11,22 +12,65 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { analyzePromptPartVsCodebase } from '../../lib/copilot_client.js';
+import {
+  analyzePromptPartVsCodebase,
+  analyzePromptPartWithReversePrompting,
+  analyzeWholePromptWithReversePrompting,
+} from '../../lib/ai_client.js';
 import { MarkdownRenderer } from './MarkdownRenderer.js';
-import type { PromptPart } from '../../parsers/prompt_parser.js';
+
+export type PartAnalysisKind = 'codebase' | 'reverse_prompt' | 'reverse_prompt_full';
+
+interface AnalysisTarget {
+  label: string;
+  lines: string[];
+}
 
 interface PartAnalysisOverlayProps {
-  part: PromptPart;
+  target: AnalysisTarget;
   projectRoot: string;
   runId: string;
+  analysisKind?: PartAnalysisKind;
 }
 
 type AnalysisStatus = 'streaming' | 'done' | 'cancelled' | 'error';
 
-export function PartAnalysisOverlay({ part, projectRoot, runId }: PartAnalysisOverlayProps) {
+const ANALYSIS_META: Record<PartAnalysisKind, {
+  title: string;
+  pendingMessage: string;
+  filenamePrefix: string;
+  headingPrefix: string;
+}> = {
+  codebase: {
+    title: '🔬 ANALYSIS',
+    pendingMessage: 'Scanning codebase and calling Copilot SDK…',
+    filenamePrefix: 'part',
+    headingPrefix: 'Part Analysis',
+  },
+  reverse_prompt: {
+    title: '🧠 REVERSE PROMPT',
+    pendingMessage: 'Reverse-engineering the selected prompt part with Copilot SDK…',
+    filenamePrefix: 'reverse_prompt',
+    headingPrefix: 'Reverse Prompt Analysis',
+  },
+  reverse_prompt_full: {
+    title: '🧠 WHOLE PROMPT',
+    pendingMessage: 'Reverse-engineering the entire prompt with Copilot SDK…',
+    filenamePrefix: 'reverse_prompt_full',
+    headingPrefix: 'Whole Prompt Reverse Prompt Analysis',
+  },
+};
+
+export function PartAnalysisOverlay({
+  target,
+  projectRoot,
+  runId,
+  analysisKind = 'codebase',
+}: PartAnalysisOverlayProps) {
   const { stdout } = useStdout();
   const termRows = Math.max(5, (stdout?.rows ?? 40) - 10);
   const termCols = stdout?.columns ?? 120;
+  const analysisMeta = ANALYSIS_META[analysisKind];
 
   const [lines, setLines] = useState<string[]>([]);
   const [status, setStatus] = useState<AnalysisStatus>('streaming');
@@ -41,9 +85,13 @@ export function PartAnalysisOverlay({ part, projectRoot, runId }: PartAnalysisOv
     (async () => {
       try {
         let fullText = '';
-        for await (const chunk of analyzePromptPartVsCodebase(
-          part.label, part.lines, projectRoot, ac.signal
-        )) {
+        const analysisStream = analysisKind === 'reverse_prompt'
+          ? analyzePromptPartWithReversePrompting(target.label, target.lines, ac.signal)
+          : analysisKind === 'reverse_prompt_full'
+            ? analyzeWholePromptWithReversePrompting(target.lines, ac.signal)
+            : analyzePromptPartVsCodebase(target.label, target.lines, projectRoot, ac.signal);
+
+        for await (const chunk of analysisStream) {
           if (ac.signal.aborted) break;
           if (chunk.done) break;
           fullText += chunk.delta;
@@ -52,16 +100,15 @@ export function PartAnalysisOverlay({ part, projectRoot, runId }: PartAnalysisOv
 
         if (!ac.signal.aborted) {
           setStatus('done');
-          // Save to disk
-          const sanitizedLabel = part.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40);
+          const sanitizedLabel = target.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40);
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const filename = `part_${sanitizedLabel}_${timestamp}.md`;
+          const filename = `${analysisMeta.filenamePrefix}_${sanitizedLabel}_${timestamp}.md`;
           const dir = join(projectRoot, '.ai_workflow', 'analysis', runId);
           const filePath = join(dir, filename);
           try {
             await mkdir(dir, { recursive: true });
-            const header = `# Part Analysis: ${part.label}\n\n` +
-              `**Run:** ${runId}  \n**Section:** ${part.label}  \n**Generated:** ${new Date().toISOString()}\n\n---\n\n`;
+            const header = `# ${analysisMeta.headingPrefix}: ${target.label}\n\n` +
+              `**Run:** ${runId}  \n**Target:** ${target.label}  \n**Generated:** ${new Date().toISOString()}\n\n---\n\n`;
             await writeFile(filePath, header + fullText, 'utf8');
             setSavedPath(filePath.replace(projectRoot + '/', ''));
           } catch (e) {
@@ -77,7 +124,7 @@ export function PartAnalysisOverlay({ part, projectRoot, runId }: PartAnalysisOv
     })();
 
     return () => { ac.abort(); };
-  }, [part, projectRoot, runId]);
+  }, [analysisKind, analysisMeta.filenamePrefix, analysisMeta.headingPrefix, projectRoot, runId, target]);
 
   // Expose scroll control to App.tsx
   useEffect(() => {
@@ -121,9 +168,9 @@ export function PartAnalysisOverlay({ part, projectRoot, runId }: PartAnalysisOv
       {/* Header */}
       <Box paddingX={1} justifyContent="space-between">
         <Box gap={1}>
-          <Text bold color="magenta">🔬 ANALYSIS</Text>
+          <Text bold color="magenta">{analysisMeta.title}</Text>
           <Text dimColor>›</Text>
-          <Text bold color="cyan">{part.label}</Text>
+          <Text bold color="cyan">{target.label}</Text>
         </Box>
         <Box gap={1}>
           {total > 0 && status !== 'streaming' && (
@@ -136,7 +183,7 @@ export function PartAnalysisOverlay({ part, projectRoot, runId }: PartAnalysisOv
       {/* Content */}
       <Box flexGrow={1} flexDirection="column" paddingX={1} overflow="hidden">
         {status === 'streaming' && lines.length === 0 ? (
-          <Text dimColor>Scanning codebase and calling Copilot SDK…</Text>
+          <Text dimColor>{analysisMeta.pendingMessage}</Text>
         ) : (
           <MarkdownRenderer lines={visibleLines} />
         )}

@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+.git
+.ai_workflow
+*.log
+npm-debug.log*
+.DS_Store

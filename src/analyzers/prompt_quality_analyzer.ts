@@ -6,7 +6,7 @@
 
 import type { PromptRecord, Issue, PromptQualityResult, ThresholdConfig } from '../types/index.js';
 import { DEFAULT_THRESHOLDS } from '../types/index.js';
-import { analyzePromptQuality } from '../lib/copilot_client.js';
+import { analyzePromptQuality } from '../lib/ai_client.js';
 
 let _issueCounter = 0;
 function nextId(): string {

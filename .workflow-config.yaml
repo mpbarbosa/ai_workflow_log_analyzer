@@ -14,7 +14,7 @@ tech_stack:
   ui_framework: "ink"           # React for terminal UIs
   test_framework: "jest"
   test_runner: "ts-jest"
-  test_command: "npm test"
+  test_command: "npm run test:docker"  # build verify image and run the test suite inside Docker
   lint_command: "npm run lint"
   lint_commands:
     javascript: "npm run lint"  # ESLint also covers repo-level .mjs config files
@@ -220,7 +220,7 @@ workflow:
     - id: step_08
       name: "Test Execution"
       file: "step_08.js"
-      description: "Execute jest test suite and validate coverage thresholds"
+      description: "Execute the Dockerized test suite and validate coverage thresholds"
       phase: 2
       enabled: true
       can_parallelize: false

@@ -14,6 +14,7 @@ interface FileTreeProps {
   selectedIndex: number;
   focused: boolean;
   loading: boolean;
+  error?: string | null;
   openedPath: string | null;
   /** When true the tree expands to fill all available width (no file open). */
   fullWidth?: boolean;
@@ -23,7 +24,16 @@ interface FileTreeProps {
 
 const INDENT = '  ';
 
-export function FileTree({ entries, selectedIndex, focused, loading, openedPath, fullWidth = false, height = 40 }: FileTreeProps) {
+export function FileTree({
+  entries,
+  selectedIndex,
+  focused,
+  loading,
+  error = null,
+  openedPath,
+  fullWidth = false,
+  height = 40,
+}: FileTreeProps) {
   const borderColor = focused ? 'cyan' : 'gray';
   const title = focused ? '▶ FILES' : '  FILES';
 
@@ -57,7 +67,13 @@ export function FileTree({ entries, selectedIndex, focused, loading, openedPath,
         </Box>
       )}
 
-      {!loading && entries.length === 0 && (
+      {!loading && error && (
+        <Box paddingX={1}>
+          <Text color="yellow">{error}</Text>
+        </Box>
+      )}
+
+      {!loading && !error && entries.length === 0 && (
         <Box paddingX={1}>
           <Text dimColor>No run selected</Text>
         </Box>
@@ -69,12 +85,7 @@ export function FileTree({ entries, selectedIndex, focused, loading, openedPath,
         const isOpen = entry.filePath === openedPath;
         const indent = INDENT.repeat(entry.depth);
 
-        let icon = '';
-        if (entry.isDir) {
-          icon = entry.isExpanded ? '▼ ' : '▶ ';
-        } else {
-          icon = isOpen ? '● ' : '  ';
-        }
+        const icon = entry.isDir ? (entry.isExpanded ? '▼ ' : '▶ ') : (isOpen ? '● ' : '  ');
 
         const label = `${indent}${icon}${entry.label}`;
         const sizeLabel = !entry.isDir && entry.sizeBytes !== undefined

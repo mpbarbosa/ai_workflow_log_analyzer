@@ -91,6 +91,40 @@ No changes needed.
     const preamble = parts.find((p) => p.label === 'Preamble');
     expect(preamble).toBeUndefined();
   });
+
+  it('correctly extracts response when the fenced response contains ## headings', () => {
+    const withNestedResponseHeadings = `# Prompt Log
+
+**Timestamp:** 2026-04-14T11:08:42.457Z
+**Persona:** documentation_expert
+**Model:** gpt-4.1
+
+## Prompt
+
+\`\`\`
+Prompt body.
+\`\`\`
+
+## Response
+
+\`\`\`
+**Documentation Consistency Analysis — Partition 1 of 3**
+
+## 1. Cross-Reference Validation (Broken Links)
+
+### Reference: README.md:127 → ./docs/api/README.md
+- **Status**: Truly Broken
+- **Root Cause**: \`docs/api/README.md\` is referenced but not present.
+- **Recommended Fix**: Create \`docs/api/README.md\` or update the reference.
+\`\`\`
+`;
+
+    const result = parsePromptFileContent(withNestedResponseHeadings);
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain('## 1. Cross-Reference Validation (Broken Links)');
+    expect(result!.response).toContain('### Reference: README.md:127 → ./docs/api/README.md');
+    expect(result!.response).toContain('- **Recommended Fix**: Create `docs/api/README.md` or update the reference.');
+  });
 });
 
 describe('parseRunPrompts', () => {

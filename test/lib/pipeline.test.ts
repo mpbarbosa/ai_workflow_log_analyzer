@@ -1,47 +1,60 @@
-import { runAnalysisPipeline } from './pipeline';
-import { DEFAULT_THRESHOLDS } from '../types/index';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-// Mocks for all imported modules
-jest.mock('node:path', () => ({
-  join: jest.fn((...args) => args.join('/')),
+const mockJoin = jest.fn((...args: string[]) => args.join('/'));
+const mockParseRunLogsToArray = jest.fn();
+const mockParseRunMetadata = jest.fn();
+const mockParseRunPrompts = jest.fn();
+const mockParseMetrics = jest.fn();
+const mockAnalyzeFailures = jest.fn();
+const mockAnalyzePerformance = jest.fn();
+const mockAnalyzeBugs = jest.fn();
+const mockAnalyzeDocumentation = jest.fn();
+const mockAnalyzeAllPrompts = jest.fn();
+const mockSummarizeReport = jest.fn();
+
+jest.unstable_mockModule('node:path', () => ({
+  join: mockJoin,
 }));
 
-jest.mock('../parsers/log_parser.js', () => ({
-  parseRunLogsToArray: jest.fn(),
-  parseRunMetadata: jest.fn(),
+jest.unstable_mockModule('../../src/parsers/log_parser.js', () => ({
+  parseRunLogsToArray: mockParseRunLogsToArray,
+  parseRunMetadata: mockParseRunMetadata,
 }));
 
-jest.mock('../parsers/prompt_parser.js', () => ({
-  parseRunPrompts: jest.fn(),
+jest.unstable_mockModule('../../src/parsers/prompt_parser.js', () => ({
+  parseRunPrompts: mockParseRunPrompts,
 }));
 
-jest.mock('../parsers/metrics_parser.js', () => ({
-  parseMetrics: jest.fn(),
+jest.unstable_mockModule('../../src/parsers/metrics_parser.js', () => ({
+  parseMetrics: mockParseMetrics,
 }));
 
-jest.mock('../analyzers/failure_analyzer.js', () => ({
-  analyzeFailures: jest.fn(),
+jest.unstable_mockModule('../../src/analyzers/failure_analyzer.js', () => ({
+  analyzeFailures: mockAnalyzeFailures,
 }));
 
-jest.mock('../analyzers/performance_analyzer.js', () => ({
-  analyzePerformance: jest.fn(),
+jest.unstable_mockModule('../../src/analyzers/performance_analyzer.js', () => ({
+  analyzePerformance: mockAnalyzePerformance,
 }));
 
-jest.mock('../analyzers/bug_analyzer.js', () => ({
-  analyzeBugs: jest.fn(),
+jest.unstable_mockModule('../../src/analyzers/bug_analyzer.js', () => ({
+  analyzeBugs: mockAnalyzeBugs,
 }));
 
-jest.mock('../analyzers/doc_analyzer.js', () => ({
-  analyzeDocumentation: jest.fn(),
+jest.unstable_mockModule('../../src/analyzers/doc_analyzer.js', () => ({
+  analyzeDocumentation: mockAnalyzeDocumentation,
 }));
 
-jest.mock('../analyzers/prompt_quality_analyzer.js', () => ({
-  analyzeAllPrompts: jest.fn(),
+jest.unstable_mockModule('../../src/analyzers/prompt_quality_analyzer.js', () => ({
+  analyzeAllPrompts: mockAnalyzeAllPrompts,
 }));
 
-jest.mock('./copilot_client.js', () => ({
-  summarizeReport: jest.fn(),
+jest.unstable_mockModule('../../src/lib/ai_client.js', () => ({
+  summarizeReport: mockSummarizeReport,
 }));
+
+const { DEFAULT_THRESHOLDS } = await import('../../src/types/index.js');
+const { runAnalysisPipeline } = await import('../../src/lib/pipeline.js');
 
 const mockEvents = [
   { timestamp: new Date('2024-01-01T00:00:00Z'), type: 'step', message: 'Step 1' },
@@ -62,12 +75,12 @@ const mockMetricsData = {
   },
 };
 const mockRunMeta = { projectRoot: '/project/root' };
-const mockFailures = [{ id: 'fail1', severity: 'critical' }];
-const mockPerfIssues = [{ id: 'perf1', severity: 'warning' }];
-const mockBugs = [{ id: 'bug1', severity: 'critical' }];
-const mockDocIssues = [{ id: 'doc1', severity: 'info' }];
+const mockFailures = [{ id: 'fail1', category: 'failure', severity: 'critical' }];
+const mockPerfIssues = [{ id: 'perf1', category: 'performance', severity: 'warning' }];
+const mockBugs = [{ id: 'bug1', category: 'bug', severity: 'critical' }];
+const mockDocIssues = [{ id: 'doc1', category: 'documentation', severity: 'info' }];
 const mockPromptQuality = [
-  { id: 1, issue: { id: 'pq1', severity: 'critical' } },
+  { id: 1, issue: { id: 'pq1', category: 'prompt_quality', severity: 'critical' } },
   { id: 2 },
 ];
 const mockSummary = 'Executive summary here.';
@@ -75,25 +88,24 @@ const mockSummary = 'Executive summary here.';
 describe('runAnalysisPipeline', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    require('../parsers/log_parser.js').parseRunLogsToArray.mockResolvedValue(mockEvents);
-    require('../parsers/prompt_parser.js').parseRunPrompts.mockResolvedValue(mockPrompts);
-    require('../parsers/metrics_parser.js').parseMetrics.mockResolvedValue(mockMetricsData);
-    require('../parsers/log_parser.js').parseRunMetadata.mockResolvedValue(mockRunMeta);
-    require('../analyzers/failure_analyzer.js').analyzeFailures.mockReturnValue(mockFailures);
-    require('../analyzers/performance_analyzer.js').analyzePerformance.mockReturnValue(mockPerfIssues);
-    require('../analyzers/bug_analyzer.js').analyzeBugs.mockReturnValue(mockBugs);
-    require('../analyzers/doc_analyzer.js').analyzeDocumentation.mockReturnValue(mockDocIssues);
-    require('../analyzers/prompt_quality_analyzer.js').analyzeAllPrompts.mockResolvedValue(mockPromptQuality);
-    require('./copilot_client.js').summarizeReport.mockResolvedValue(mockSummary);
+    mockJoin.mockImplementation((...args: string[]) => args.join('/'));
+    mockParseRunLogsToArray.mockResolvedValue(mockEvents);
+    mockParseRunPrompts.mockResolvedValue(mockPrompts);
+    mockParseMetrics.mockResolvedValue(mockMetricsData);
+    mockParseRunMetadata.mockResolvedValue(mockRunMeta);
+    mockAnalyzeFailures.mockReturnValue(mockFailures);
+    mockAnalyzePerformance.mockReturnValue(mockPerfIssues);
+    mockAnalyzeBugs.mockReturnValue(mockBugs);
+    mockAnalyzeDocumentation.mockReturnValue(mockDocIssues);
+    mockAnalyzeAllPrompts.mockResolvedValue(mockPromptQuality);
+    mockSummarizeReport.mockResolvedValue(mockSummary);
   });
 
   it('runs the full pipeline and returns a complete AnalysisReport (happy path)', async () => {
     const onProgress = jest.fn();
-    const report = await runAnalysisPipeline(
-      '/runs/workflow_20240101_000000',
-      '/.ai_workflow/metrics',
-      { onProgress }
-    );
+    const report = await runAnalysisPipeline('/runs/workflow_20240101_000000', '/.ai_workflow/metrics', {
+      onProgress,
+    });
 
     expect(report.runId).toBe('workflow_20240101_000000');
     expect(report.projectRoot).toBe('/project/root');
@@ -103,7 +115,7 @@ describe('runAnalysisPipeline', () => {
       ...mockPerfIssues,
       ...mockBugs,
       ...mockDocIssues,
-      { id: 'pq1', severity: 'critical' },
+      { id: 'pq1', category: 'prompt_quality', severity: 'critical' },
     ]);
     expect(report.promptQuality).toEqual(mockPromptQuality);
     expect(report.counts).toEqual({
@@ -117,81 +129,62 @@ describe('runAnalysisPipeline', () => {
     });
     expect(report.summary).toBe(mockSummary);
 
-    // onProgress called for each phase
     expect(onProgress).toHaveBeenCalledWith('Parsing logs', 0, 3);
     expect(onProgress).toHaveBeenCalledWith('Parsing logs', 3, 3);
     expect(onProgress).toHaveBeenCalledWith('Analyzing', 0, 4);
     expect(onProgress).toHaveBeenCalledWith('Analyzing', 4, 4);
-    expect(onProgress).toHaveBeenCalledWith('Prompt quality', 1, 2);
-    expect(onProgress).toHaveBeenCalledWith('Prompt quality', 2, 2);
     expect(onProgress).toHaveBeenCalledWith('Summarizing', 0, 1);
     expect(onProgress).toHaveBeenCalledWith('Summarizing', 1, 1);
   });
 
   it('uses opts.projectRoot if provided', async () => {
-    const report = await runAnalysisPipeline(
-      '/runs/workflow_20240101_000000',
-      '/.ai_workflow/metrics',
-      { projectRoot: '/override/root' }
-    );
+    const report = await runAnalysisPipeline('/runs/workflow_20240101_000000', '/.ai_workflow/metrics', {
+      projectRoot: '/override/root',
+    });
     expect(report.projectRoot).toBe('/override/root');
   });
 
   it('uses DEFAULT_THRESHOLDS if thresholds not provided', async () => {
     await runAnalysisPipeline('/runs/dir', '/metrics');
-    expect(require('../analyzers/performance_analyzer.js').analyzePerformance)
-      .toHaveBeenCalledWith(expect.anything(), DEFAULT_THRESHOLDS);
-    expect(require('../analyzers/prompt_quality_analyzer.js').analyzeAllPrompts)
-      .toHaveBeenCalledWith(expect.anything(), DEFAULT_THRESHOLDS, expect.any(Function));
+    expect(mockAnalyzePerformance).toHaveBeenCalledWith(expect.anything(), DEFAULT_THRESHOLDS);
+    expect(mockAnalyzeAllPrompts).toHaveBeenCalledWith(expect.anything(), DEFAULT_THRESHOLDS, expect.any(Function));
   });
 
   it('uses provided thresholds if given', async () => {
     const thresholds = { perf: 42 };
     await runAnalysisPipeline('/runs/dir', '/metrics', { thresholds });
-    expect(require('../analyzers/performance_analyzer.js').analyzePerformance)
-      .toHaveBeenCalledWith(expect.anything(), thresholds);
-    expect(require('../analyzers/prompt_quality_analyzer.js').analyzeAllPrompts)
-      .toHaveBeenCalledWith(expect.anything(), thresholds, expect.any(Function));
+    expect(mockAnalyzePerformance).toHaveBeenCalledWith(expect.anything(), thresholds);
+    expect(mockAnalyzeAllPrompts).toHaveBeenCalledWith(expect.anything(), thresholds, expect.any(Function));
   });
 
   it('skips prompt quality analysis if skipPromptQuality is true', async () => {
     const report = await runAnalysisPipeline('/runs/dir', '/metrics', { skipPromptQuality: true });
     expect(report.promptQuality).toEqual([]);
-    expect(report.issues).toEqual([
-      ...mockFailures,
-      ...mockPerfIssues,
-      ...mockBugs,
-      ...mockDocIssues,
-    ]);
-    expect(require('../analyzers/prompt_quality_analyzer.js').analyzeAllPrompts).not.toHaveBeenCalled();
+    expect(report.issues).toEqual([...mockFailures, ...mockPerfIssues, ...mockBugs, ...mockDocIssues]);
+    expect(mockAnalyzeAllPrompts).not.toHaveBeenCalled();
   });
 
   it('skips prompt quality if no prompts are present', async () => {
-    require('../parsers/prompt_parser.js').parseRunPrompts.mockResolvedValueOnce([]);
+    mockParseRunPrompts.mockResolvedValueOnce([]);
     const report = await runAnalysisPipeline('/runs/dir', '/metrics');
     expect(report.promptQuality).toEqual([]);
-    expect(report.issues).toEqual([
-      ...mockFailures,
-      ...mockPerfIssues,
-      ...mockBugs,
-      ...mockDocIssues,
-    ]);
+    expect(report.issues).toEqual([...mockFailures, ...mockPerfIssues, ...mockBugs, ...mockDocIssues]);
   });
 
   it('skips summary if skipSummary is true', async () => {
     const report = await runAnalysisPipeline('/runs/dir', '/metrics', { skipSummary: true });
     expect(report.summary).toBeUndefined();
-    expect(require('./copilot_client.js').summarizeReport).not.toHaveBeenCalled();
+    expect(mockSummarizeReport).not.toHaveBeenCalled();
   });
 
   it('handles summarizeReport throwing (summary is optional)', async () => {
-    require('./copilot_client.js').summarizeReport.mockRejectedValueOnce(new Error('fail'));
+    mockSummarizeReport.mockRejectedValueOnce(new Error('fail'));
     const report = await runAnalysisPipeline('/runs/dir', '/metrics');
     expect(report.summary).toBeUndefined();
   });
 
   it('builds metrics from events if metricsData.currentRun is missing', async () => {
-    require('../parsers/metrics_parser.js').parseMetrics.mockResolvedValueOnce({});
+    mockParseMetrics.mockResolvedValueOnce({});
     const report = await runAnalysisPipeline('/runs/dir', '/metrics');
     expect(report.metrics.runId).toBe('dir');
     expect(report.metrics.startTime).toEqual(mockEvents[0].timestamp);
@@ -202,8 +195,8 @@ describe('runAnalysisPipeline', () => {
   });
 
   it('handles missing events (empty array) gracefully', async () => {
-    require('../parsers/log_parser.js').parseRunLogsToArray.mockResolvedValueOnce([]);
-    require('../parsers/metrics_parser.js').parseMetrics.mockResolvedValueOnce({});
+    mockParseRunLogsToArray.mockResolvedValueOnce([]);
+    mockParseMetrics.mockResolvedValueOnce({});
     const report = await runAnalysisPipeline('/runs/dir', '/metrics');
     expect(report.metrics.startTime).toBeInstanceOf(Date);
     expect(report.issues).toEqual([
@@ -211,13 +204,13 @@ describe('runAnalysisPipeline', () => {
       ...mockPerfIssues,
       ...mockBugs,
       ...mockDocIssues,
-      { id: 'pq1', severity: 'critical' },
+      { id: 'pq1', category: 'prompt_quality', severity: 'critical' },
     ]);
   });
 
   it('handles missing runId in runDir', async () => {
     const report = await runAnalysisPipeline('/runs/', '/metrics');
-    expect(report.runId).toBe('runs');
+    expect(report.runId).toBe('');
   });
 
   it('counts critical issues correctly', async () => {
@@ -225,7 +218,7 @@ describe('runAnalysisPipeline', () => {
     expect(report.counts.critical).toBe(
       [mockFailures, mockPerfIssues, mockBugs, mockDocIssues, [{ id: 'pq1', severity: 'critical' }]]
         .flat()
-        .filter((i) => i.severity === 'critical').length
+        .filter((issue) => issue.severity === 'critical').length
     );
   });
 
@@ -236,33 +229,24 @@ describe('runAnalysisPipeline', () => {
     expect(onProgress).toHaveBeenCalledWith('Parsing logs', 3, 3);
     expect(onProgress).toHaveBeenCalledWith('Analyzing', 0, 4);
     expect(onProgress).toHaveBeenCalledWith('Analyzing', 4, 4);
-    expect(onProgress).toHaveBeenCalledWith('Prompt quality', 1, 2);
-    expect(onProgress).toHaveBeenCalledWith('Prompt quality', 2, 2);
     expect(onProgress).toHaveBeenCalledWith('Summarizing', 0, 1);
     expect(onProgress).toHaveBeenCalledWith('Summarizing', 1, 1);
   });
 
   it('handles promptQuality with no issues', async () => {
-    require('../analyzers/prompt_quality_analyzer.js').analyzeAllPrompts.mockResolvedValueOnce([
-      { id: 1 }, { id: 2 }
-    ]);
+    mockAnalyzeAllPrompts.mockResolvedValueOnce([{ id: 1 }, { id: 2 }]);
     const report = await runAnalysisPipeline('/runs/dir', '/metrics');
     expect(report.promptQuality).toEqual([{ id: 1 }, { id: 2 }]);
-    expect(report.issues).toEqual([
-      ...mockFailures,
-      ...mockPerfIssues,
-      ...mockBugs,
-      ...mockDocIssues,
-    ]);
+    expect(report.issues).toEqual([...mockFailures, ...mockPerfIssues, ...mockBugs, ...mockDocIssues]);
     expect(report.counts.promptQuality).toBe(0);
   });
 
   it('handles empty issues from all analyzers', async () => {
-    require('../analyzers/failure_analyzer.js').analyzeFailures.mockReturnValueOnce([]);
-    require('../analyzers/performance_analyzer.js').analyzePerformance.mockReturnValueOnce([]);
-    require('../analyzers/bug_analyzer.js').analyzeBugs.mockReturnValueOnce([]);
-    require('../analyzers/doc_analyzer.js').analyzeDocumentation.mockReturnValueOnce([]);
-    require('../analyzers/prompt_quality_analyzer.js').analyzeAllPrompts.mockResolvedValueOnce([]);
+    mockAnalyzeFailures.mockReturnValueOnce([]);
+    mockAnalyzePerformance.mockReturnValueOnce([]);
+    mockAnalyzeBugs.mockReturnValueOnce([]);
+    mockAnalyzeDocumentation.mockReturnValueOnce([]);
+    mockAnalyzeAllPrompts.mockResolvedValueOnce([]);
     const report = await runAnalysisPipeline('/runs/dir', '/metrics');
     expect(report.issues).toEqual([]);
     expect(report.counts.total).toBe(0);

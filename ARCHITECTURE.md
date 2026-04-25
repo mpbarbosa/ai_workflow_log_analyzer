@@ -123,7 +123,7 @@ Key state variables:
 - `promptSplitMode` — split prompt/response view (`[p]`)
 - `promptPartsMode` — navigable prompt sections view (`[s]`)
 - `promptZoomedPane` — full-screen pane in split mode (`[z]`)
-- `showPartAnalysis` — part analysis overlay active (`[a]`)
+- `partAnalysisRequest` — selected prompt-part analysis overlay request (`[a]` codebase / `[b]` reverse prompt)
 
 ### Components (`src/tui/components/`)
 
@@ -140,7 +140,7 @@ Key state variables:
 | `FileViewer.tsx` | Read-only file viewer with log line colouring; routes `.md` to `MarkdownRenderer` |
 | `PromptSplitViewer.tsx` | Side-by-side prompt/response panes with zoom |
 | `PromptPartsViewer.tsx` | Navigable prompt section list + markdown content pane |
-| `PartAnalysisOverlay.tsx` | Streaming Copilot analysis of a selected prompt section |
+| `PartAnalysisOverlay.tsx` | Streaming Copilot analysis of a selected prompt section (`[a]` codebase alignment, `[b]` reverse prompting) |
 | `MarkdownRenderer.tsx` | Renders markdown to Ink JSX (headings, code blocks, lists, etc.) |
 | `HelpOverlay.tsx` | Full-screen keyboard shortcut reference |
 
@@ -305,4 +305,4 @@ rather than failing the entire report. The same applies to `summarizeReport()`.
 
 ---
 
-*Applies to **v0.2.3**. Update this line whenever the package version is bumped.*
+*Applies to **v0.3.0**. Update this line whenever the package version is bumped.*

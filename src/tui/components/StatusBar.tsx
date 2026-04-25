@@ -16,6 +16,7 @@ interface StatusBarProps {
   partAnalysisOpen?: boolean;
   isPromptFile?: boolean;
   isAnalysisFile?: boolean;
+  isWorkflowLogFile?: boolean;
   promptZoomed?: boolean;
   // Status
   analysisState?: AnalysisState;
@@ -49,7 +50,7 @@ export function StatusBar({
   filter, focusedPanel, canExport,
   mode = 'analysis', fileOpen = false,
   promptSplitMode = false, promptPartsMode = false, partAnalysisOpen = false,
-  isPromptFile = false, isAnalysisFile = false, promptZoomed = false,
+  isPromptFile = false, isAnalysisFile = false, isWorkflowLogFile = false, promptZoomed = false,
   analysisState = 'idle', progressPhase, issueCount, criticalCount, runId,
 }: StatusBarProps) {
   const inSplitView = mode === 'files' && promptSplitMode && focusedPanel === 'fileviewer';
@@ -73,9 +74,11 @@ export function StatusBar({
                     <K>Tab</K> {promptZoomed ? 'Switch pane' : 'Prompt↔Response'}{'  '}
                     <K>z</K> {promptZoomed ? 'Zoom out' : 'Zoom pane'}{'  '}
                     <K>PgUp/Dn</K> Scroll{'  '}
+                    {isPromptFile && !partAnalysisOpen && <><K>d</K> Analyze folder{'  '}</>}
+                    {isPromptFile && !partAnalysisOpen && <><K>f</K> Fix issues{'  '}</>}
                   </>
                 ) : (
-                  <><K>PgUp/Dn</K> Scroll{'  '}<K>g/G</K> Top/Bot{'  '}</>
+                  <><K>PgUp/Dn</K> Scroll{'  '}<K>{inPartsMode && isPromptFile && !partAnalysisOpen ? 'G' : 'g/G'}</K> {inPartsMode && isPromptFile && !partAnalysisOpen ? 'Bottom' : 'Top/Bot'}{'  '}</>
                 )}
                 {fileOpen && (
                   <>
@@ -83,10 +86,19 @@ export function StatusBar({
                       <><K>p</K> {promptSplitMode ? 'Raw view' : 'Split Prompt/Response'}{'  '}</>
                     )}
                     {!partAnalysisOpen && (
-                      <><K>s</K> {promptPartsMode ? 'Raw view' : 'Parts view'}{'  '}</>
+                      <><K>s</K> {promptPartsMode ? 'Raw view' : 'Parts view'}{'  '}<K>c</K> Consolidate{'  '}</>
                     )}
-                    {promptPartsMode && (
-                      <><K>a</K> {partAnalysisOpen ? 'Close analysis' : 'Analyze part'}{'  '}</>
+                    {promptPartsMode && !partAnalysisOpen && (
+                      <><K>a</K> Analyze codebase{'  '}<K>b</K> Reverse part{'  '}</>
+                    )}
+                    {promptPartsMode && isPromptFile && !partAnalysisOpen && (
+                      <><K>e</K> Whole prompt{'  '}<K>g</K> Validate log{'  '}</>
+                    )}
+                    {isPromptFile && !partAnalysisOpen && !promptSplitMode && (
+                      <><K>d</K> Analyze folder{'  '}<K>f</K> Fix issues{'  '}</>
+                    )}
+                    {isWorkflowLogFile && !partAnalysisOpen && (
+                      <><K>w</K> execution analysis{'  '}</>
                     )}
                     {promptPartsMode && isAnalysisFile && !partAnalysisOpen && (
                       <><K>x</K> Fix with Copilot{'  '}</>
@@ -96,7 +108,10 @@ export function StatusBar({
                 <K>Esc</K> Close{'  '}
               </>
             ) : (
-              <><K>Enter</K> Open/Expand{'  '}</>
+              <>
+                <K>Enter</K> Open/Expand{'  '}
+                {focusedPanel === 'filetree' && isWorkflowLogFile && <><K>w</K> execution analysis{'  '}</>}
+              </>
             )}
           </>
         ) : (

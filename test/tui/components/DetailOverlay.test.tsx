@@ -62,8 +62,7 @@ describe('DetailOverlay', () => {
     const { lastFrame } = render(<DetailOverlay issue={issue} onClose={jest.fn()} />);
     const frame = lastFrame();
     expect(frame).toContain('Evidence');
-    expect(frame).toContain('x'.repeat(400));
-    expect(frame).not.toContain('x'.repeat(401));
+    expect((frame.match(/x/g) ?? []).length).toBe(400);
   });
 
   it('renders minimal issue', () => {

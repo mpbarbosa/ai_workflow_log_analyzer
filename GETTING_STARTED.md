@@ -25,10 +25,16 @@ npm install
 Verify the setup passes all tests:
 
 ```bash
-npm test
+npm run test:ci
 ```
 
 > Tests that exercise the Copilot SDK are mocked — no network access is required.
+
+To run the same verification path used by CI inside Docker:
+
+```bash
+npm run test:docker
+```
 
 ---
 
@@ -42,6 +48,9 @@ npm test
 | `npm run build` | Compile `src/` → `dist/` |
 | `npm run type:check` | Type-check without emitting (`tsc --noEmit`) |
 | `npm test` | Run all tests |
+| `npm run test:ci` | Run the full test suite serially (matches CI) |
+| `npm run verify` | Run lint + type-check + build + serial tests |
+| `npm run test:docker` | Run the full verification suite in Docker |
 | `npm test -- --testPathPatterns=parsers` | Run a single test folder |
 | `npm test -- --testNamePattern="analyzes failures"` | Run a single test by name |
 | `npm run lint` | Run ESLint |

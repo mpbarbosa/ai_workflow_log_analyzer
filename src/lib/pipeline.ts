@@ -3,7 +3,6 @@
  * @module lib/pipeline
  */
 
-import { join } from 'node:path';
 import { parseRunLogsToArray, parseRunMetadata } from '../parsers/log_parser.js';
 import { parseRunPrompts } from '../parsers/prompt_parser.js';
 import { parseMetrics } from '../parsers/metrics_parser.js';
@@ -12,7 +11,7 @@ import { analyzePerformance } from '../analyzers/performance_analyzer.js';
 import { analyzeBugs } from '../analyzers/bug_analyzer.js';
 import { analyzeDocumentation } from '../analyzers/doc_analyzer.js';
 import { analyzeAllPrompts } from '../analyzers/prompt_quality_analyzer.js';
-import { summarizeReport } from './copilot_client.js';
+import { summarizeReport } from './ai_client.js';
 import type { AnalysisReport, Issue, RunMetrics, ThresholdConfig } from '../types/index.js';
 import { DEFAULT_THRESHOLDS } from '../types/index.js';
 

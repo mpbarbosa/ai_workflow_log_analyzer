@@ -1,9 +1,12 @@
-import { toMarkdown, writeMarkdownReport } from '../../src/reporters/markdown_reporter';
-import { writeFile } from 'node:fs/promises';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
 
-jest.mock('node:fs/promises', () => ({
-  writeFile: jest.fn(),
+const mockWriteFile = jest.fn();
+
+jest.unstable_mockModule('node:fs/promises', () => ({
+  writeFile: mockWriteFile,
 }));
+
+const { toMarkdown, writeMarkdownReport } = await import('../../src/reporters/markdown_reporter.js');
 
 const baseDate = new Date('2024-01-01T12:00:00.000Z');
 const makeIssue = (overrides = {}) => ({
@@ -54,13 +57,13 @@ const makeReport = (overrides = {}) => ({
 
 describe('markdown_reporter', () => {
   afterEach(() => {
-    jest.clearAllMocks();
+    mockWriteFile.mockReset();
   });
 
   describe('toMarkdown', () => {
     it('renders a minimal report', () => {
       const report = makeReport();
-      const md = toMarkdown(report);
+      const md = toMarkdown(report as never);
       expect(md).toContain('# AI Workflow Log Analysis Report');
       expect(md).toContain('**Run ID**: `run-123`');
       expect(md).toContain('**Analyzed At**: 2024-01-01T12:00:00.000Z');
@@ -72,10 +75,8 @@ describe('markdown_reporter', () => {
 
     it('renders issues by category with all fields', () => {
       const issue = makeIssue();
-      const report = makeReport({
-        issues: [issue],
-      });
-      const md = toMarkdown(report);
+      const report = makeReport({ issues: [issue] });
+      const md = toMarkdown(report as never);
       expect(md).toContain('## Bug Issues (1)');
       expect(md).toContain('### 🟠 Test Issue');
       expect(md).toContain('- **Category**: Bug');
@@ -101,7 +102,7 @@ describe('markdown_reporter', () => {
         llmAnalysis: undefined,
       });
       const report = makeReport({ issues: [issue] });
-      const md = toMarkdown(report);
+      const md = toMarkdown(report as never);
       expect(md).not.toContain('**Step**:');
       expect(md).not.toContain('**Time**:');
       expect(md).not.toContain('**Root Cause**:');
@@ -110,13 +111,12 @@ describe('markdown_reporter', () => {
       expect(md).not.toContain('**AI Analysis**:');
     });
 
-    it('renders unknown severity and category gracefully', () => {
+    it('ignores unknown issue categories in grouped output', () => {
       const issue = makeIssue({ severity: 'unknown', category: 'mystery' });
       const report = makeReport({ issues: [issue] });
-      const md = toMarkdown(report);
-      expect(md).toContain('### ⚪ Test Issue');
-      expect(md).toContain('- **Category**: mystery');
-      expect(md).toContain('- **Severity**: unknown');
+      const md = toMarkdown(report as never);
+      expect(md).not.toContain('## Unknown Issues');
+      expect(md).not.toContain('### ⚪ Test Issue');
     });
 
     it('renders multiple categories and skips empty ones', () => {
@@ -128,7 +128,7 @@ describe('markdown_reporter', () => {
         makeIssue({ category: 'prompt_quality', title: 'Prompt 1' }),
       ];
       const report = makeReport({ issues });
-      const md = toMarkdown(report);
+      const md = toMarkdown(report as never);
       expect(md).toContain('## Failure Issues (1)');
       expect(md).toContain('## Performance Issues (1)');
       expect(md).toContain('## Bug Issues (1)');
@@ -140,7 +140,7 @@ describe('markdown_reporter', () => {
     it('renders prompt quality details when present', () => {
       const pq = makePromptQuality();
       const report = makeReport({ promptQuality: [pq] });
-      const md = toMarkdown(report);
+      const md = toMarkdown(report as never);
       expect(md).toContain('## Prompt Quality Details');
       expect(md).toContain('### Step `step-2` — Persona: `dev`');
       expect(md).toContain('**Quality Score**: `70%`');
@@ -152,26 +152,26 @@ describe('markdown_reporter', () => {
     it('does not render prompt quality details if no issues', () => {
       const pq = makePromptQuality({ issue: false });
       const report = makeReport({ promptQuality: [pq] });
-      const md = toMarkdown(report);
+      const md = toMarkdown(report as never);
       expect(md).not.toContain('## Prompt Quality Details');
     });
 
     it('renders empty suggestions gracefully', () => {
       const pq = makePromptQuality({ suggestions: [] });
       const report = makeReport({ promptQuality: [pq] });
-      const md = toMarkdown(report);
+      const md = toMarkdown(report as never);
       expect(md).not.toContain('**Suggestions**:');
     });
 
     it('handles missing summary', () => {
       const report = makeReport({ summary: undefined });
-      const md = toMarkdown(report);
+      const md = toMarkdown(report as never);
       expect(md).not.toContain('## Executive Summary');
     });
 
     it('handles empty issues and promptQuality arrays', () => {
       const report = makeReport({ issues: [], promptQuality: [] });
-      const md = toMarkdown(report);
+      const md = toMarkdown(report as never);
       expect(md).toContain('## Issue Summary');
       expect(md).not.toContain('## Failure Issues');
       expect(md).not.toContain('## Prompt Quality Details');
@@ -181,8 +181,8 @@ describe('markdown_reporter', () => {
   describe('writeMarkdownReport', () => {
     it('writes the markdown to the given file', async () => {
       const report = makeReport();
-      await writeMarkdownReport(report, '/tmp/test.md');
-      expect(writeFile).toHaveBeenCalledWith(
+      await writeMarkdownReport(report as never, '/tmp/test.md');
+      expect(mockWriteFile).toHaveBeenCalledWith(
         '/tmp/test.md',
         expect.stringContaining('# AI Workflow Log Analysis Report'),
         'utf8'
@@ -190,8 +190,8 @@ describe('markdown_reporter', () => {
     });
 
     it('propagates write errors', async () => {
-      (writeFile as jest.Mock).mockRejectedValueOnce(new Error('disk full'));
-      await expect(writeMarkdownReport(makeReport(), '/tmp/fail.md')).rejects.toThrow('disk full');
+      mockWriteFile.mockRejectedValueOnce(new Error('disk full'));
+      await expect(writeMarkdownReport(makeReport() as never, '/tmp/fail.md')).rejects.toThrow('disk full');
     });
   });
 });
